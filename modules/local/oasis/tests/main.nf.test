@@ -20,9 +20,9 @@ nextflow_process {
                 """
                 input[0] = [
                     [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
-                    file("${projectDir}/tests/fixtures/test_humanized.fa", checkIfExists: true)
+                    file("${projectDir}/modules/local/oasis/tests/fixtures/test_humanized.fa", checkIfExists: true)
                 ]
-                input[1] = file("${projectDir}/tests/fixtures/test_humanized.fa")
+                input[1] = file("${projectDir}/modules/local/oasis/tests/fixtures/test_humanized.fa")
                 """
             }
         }
@@ -49,7 +49,7 @@ nextflow_process {
                 """
                 input[0] = [
                     [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
-                    file("${projectDir}/tests/fixtures/test_humanized.fa", checkIfExists: true)
+                    file("${projectDir}/modules/local/oasis/tests/fixtures/test_humanized.fa", checkIfExists: true)
                 ]
                 input[1] = file(params.oasis_db, checkIfExists: true)
                 """
