@@ -25,8 +25,9 @@ Agents MUST follow these rules unless a user explicitly overrides them in the cu
 
 ### What This Project Does
 
-End-to-end nf-core Nextflow pipeline for antibody optimization. Takes an antibody PDB structure as input
-and produces redesigned, structurally verified, and humanized antibody sequences with OASis humanness scores.
+End-to-end nf-core Nextflow pipeline (`nf-core/antibodyoptimization`) for antibody optimization.
+Takes an antibody PDB structure as input and produces redesigned, structurally verified, and humanized
+antibody sequences with OASis humanness scores.
 
 The pipeline is composed of four modules that connect into a single end-to-end workflow:
 AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
@@ -35,9 +36,10 @@ AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
 
 | Layer | Technology |
 |---|---|
-| Workflow framework | Nextflow DSL2 |
+| Workflow framework | Nextflow DSL2 (`>=25.04.0` required) |
 | Pipeline conventions | nf-core strict |
-| Containers | Docker (primary) |
+| Containers | Docker (primary); registry `quay.io` by default |
+| Input validation | nf-schema plugin `2.5.1` |
 | Module testing | nf-test |
 | Linting / validation | nf-core lint, nf-core schema lint |
 | Input format | PDB structure file via samplesheet CSV |
@@ -78,7 +80,7 @@ Do not add meta fields without updating all affected modules.
 
 ```bash
 # Run full pipeline
-nextflow run main.nf -profile docker --input samplesheet.csv --outdir results
+nextflow run . -profile docker --input samplesheet.csv --outdir results
 
 # Run with test data (uses 6y1l.pdb)
 nextflow run . -profile docker --input /data/pdb/6y1l.pdb --outdir ./results
@@ -104,6 +106,23 @@ sample,pdb,chain_heavy,chain_light
 Ab001,/path/to/Ab001.pdb,H,L
 ```
 
+### Repository Layout (key paths)
+
+```
+workflows/antibodyoptimization.nf          # main workflow stub — wire modules here
+modules/local/                             # all four custom modules go here
+subworkflows/local/utils_nfcore_antibodyoptimization_pipeline/main.nf  # samplesheet parsing
+assets/samplesheet.csv                     # template samplesheet — update to PDB schema
+assets/schema_input.json                   # input validation schema — update to PDB schema
+conf/base.config                           # resource label definitions
+conf/modules.config                        # per-module publishDir and ext.args
+conf/test.config                           # test profile — update to point at 6y1l.pdb
+```
+
+> **Template TODOs still open**: `assets/samplesheet.csv`, `assets/schema_input.json`, and
+> `conf/test.config` still contain nf-core fastq/viralrecon defaults. These must be updated
+> as part of Issue #1 before module work begins.
+
 ### Host Data Paths
 
 These paths are pre-staged on the host and must be mounted into containers where needed:
@@ -124,8 +143,11 @@ These paths are pre-staged on the host and must be mounted into containers where
 - **The `meta` map is the cross-module contract.** Every process must pass `meta` through
   unchanged unless a field is explicitly being added for downstream use.
 - **`versions` channel is mandatory** in every process. Never omit it, even in draft modules.
-- **Resource labels** (`process_low`, `process_medium`, `process_high`) are defined in
-  `conf/base.config`. Assign them based on expected compute; do not hardcode CPUs/memory in modules.
+- **Resource labels** are defined in `conf/base.config`. Assign based on expected compute; do not
+  hardcode CPUs/memory in modules. Available labels:
+  `process_single` (1 CPU / 6 GB), `process_low` (2 CPU / 12 GB), `process_medium` (6 CPU / 36 GB),
+  `process_high` (12 CPU / 72 GB), `process_long` (extended time), `process_high_memory` (200 GB),
+  `process_gpu` (GPU accelerator — only effective under `-profile gpu`).
 
 ---
 
@@ -223,7 +245,7 @@ Current open issues and their status. Use this to understand sequencing before s
 
 | # | Title | Label | Status | Depends on |
 |---|---|---|---|---|
-| #1 | Initialise pipeline using nf-core template | pipeline | template + repo done; README pending | — |
+| #1 | Initialise pipeline using nf-core template | pipeline | template applied; samplesheet/schema/test.config still use fastq defaults; README pending | — |
 | #2 | Write custom Dockerfile for AntiFold | dockerfile | not started | — |
 | #3 | Write nf-core module for AntiFold CDR redesign | module | not started | #2 |
 | #4 | Write custom Dockerfile for ABodyBuilder2 | dockerfile | not started | — |
