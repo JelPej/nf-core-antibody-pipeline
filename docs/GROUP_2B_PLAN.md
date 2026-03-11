@@ -4,162 +4,103 @@
 
 ---
 
-## Your issues
+## Issue status
 
 | Issue | Task | Assignee | Status |
 |-------|------|----------|--------|
 | [#1](https://github.com/JelPej/nf-core-antibody-pipeline/issues/1) | Initialise pipeline (samplesheet/schema/test.config for PDB) | pdias | **Done** ✅ |
 | [#4](https://github.com/JelPej/nf-core-antibody-pipeline/issues/4) | Write custom Dockerfile for ABodyBuilder2 | jaaaana | **Done** ✅ |
 | [#5](https://github.com/JelPej/nf-core-antibody-pipeline/issues/5) | Write nf-core module for ABodyBuilder2 | jaaaana | **Done** ✅ |
-| [#8](https://github.com/JelPej/nf-core-antibody-pipeline/issues/8) | Write nf-core module for OASis humanness scoring | — | Open |
-| [#9](https://github.com/JelPej/nf-core-antibody-pipeline/issues/9) | Wire all modules into end-to-end pipeline | — | Open |
-| [#10](https://github.com/JelPej/nf-core-antibody-pipeline/issues/10) | End-to-end test run with 6y1l test PDB | — | Open |
+| [#8](https://github.com/JelPej/nf-core-antibody-pipeline/issues/8) | Write nf-core module for OASis humanness scoring | — | Open — waiting on biophi image (#6) |
+| [#9](https://github.com/JelPej/nf-core-antibody-pipeline/issues/9) | Wire all modules into end-to-end pipeline | — | Open — depends on #3, #5, #7, #8 |
+| [#10](https://github.com/JelPej/nf-core-antibody-pipeline/issues/10) | End-to-end test run with 6y1l test PDB | — | Open — depends on #9 |
 
 ---
 
-## Pipeline flow (where your modules fit)
+## Pipeline flow (where our modules fit)
 
 ```
-/data/pdb/6y1l.pdb  (input PDB — IMGT-numbered)
+assets/samplesheet_test.csv  →  /data/antifold/pdbs/6y1l_imgt.pdb  (IMGT-numbered PDB input)
          │
          ▼  ── Group 2a (Issues #2, #3)
      AntiFold           →  CDR candidate sequences (.fasta)
          │
-         ▼  ── YOU (Issue #5)
+         ▼  ── US (Issue #5)
      ABodyBuilder2      →  predicted PDB per candidate (.pdb, failed predictions flagged)
          │
          ▼  ── Group 2a (Issues #6, #7)
      BioPhi Sapiens     →  humanized sequences (.fasta)
          │
-         ▼  ── YOU (Issue #8)
-     OASis              →  humanness scores, ranked candidates (.csv)
+         ▼  ── US (Issue #8)
+     OASis              →  humanness scores (.csv)
 ```
 
 **Entry command (Issue #10):**
 ```bash
-nextflow run . -profile docker --input /data/pdb/6y1l.pdb --outdir ./results
+nextflow run . -profile docker,test --outdir ./results
 ```
 
 ---
 
 ## Shared resources (pre-staged, do not download)
 
-| Resource | Path |
-|----------|------|
-| Test PDB | `/data/pdb/6y1l.pdb` |
+| Resource | Host path |
+|----------|-----------|
+| Test PDB (IMGT-numbered) | `/data/antifold/pdbs/6y1l_imgt.pdb` |
 | OASis database | `/data/oasis/OASis_9mers_v1.db` |
-| BioPhi+OASis Docker | Shared image built in Issue #6 by Group 2a — coordinate on image name |
+| BioPhi+OASis Docker | Built in Issue #6 by TheeOliver — coordinate image name before Issue #8 |
 
 ---
 
-## Task 1 — Dockerfile for ABodyBuilder2 (Issue #4)
+## Task 1 — Dockerfile for ABodyBuilder2 (Issue #4) ✅
 
-**File to create:** `docker/abodybuilder2/Dockerfile`
+**File:** `docker/abodybuilder2/Dockerfile` — see [docker/abodybuilder2/Dockerfile](../docker/abodybuilder2/Dockerfile)
 
-**Source:** https://github.com/oxpig/ImmuneBuilder
+**What's in it:** `continuumio/miniconda3:latest`, python=3.10, openmm+pdbfixer via conda, PyTorch CPU via pip, ANARCI, ImmuneBuilder. ENTRYPOINT `/bin/bash`.
 
 **Acceptance criteria:**
-- [ ] Dockerfile builds successfully
-- [ ] `ABodyBuilder2 --help` runs inside container
+- [x] Dockerfile builds successfully
+- [x] `ABodyBuilder2 --help` runs inside container
 - [ ] Image pushed to Docker Hub or GitHub Container Registry
-
-**Dockerfile:** See [docker/abodybuilder2/Dockerfile](../docker/abodybuilder2/Dockerfile)
-
-> Uses `python=3.10`, PyTorch CPU, ANARCI, ImmuneBuilder. ENTRYPOINT is `/bin/bash`.
-
-> `python:3.9-slim` won't work cleanly — `openmm` and `pdbfixer` need conda.
 
 **Build & test:**
 ```bash
-cd nf-core-antibody-pipeline
-
 docker build -t abodybuilder2:latest docker/abodybuilder2/
 
-# Acceptance check 1: help text prints
+# Check CLI
 docker run --rm abodybuilder2:latest ABodyBuilder2 --help
 
-# Acceptance check 2: predicts structure from FASTA
-# FASTA headers must be exactly >H and >L
+# Predict structure — headers must be exactly >H and >L
 docker run --rm -v /tmp:/data abodybuilder2:latest \
   ABodyBuilder2 -f /data/test_antibody.fasta -o /data/test_out.pdb
-ls /tmp/test_out.pdb   # should exist
+ls /tmp/test_out.pdb
 ```
 
-> **Confirmed CLI flags:** `-f <fasta>` and `-o <output.pdb>`. Headers must be `>H` / `>L` (not `>heavy`/`>light`).
+> **Confirmed CLI flags:** `ABodyBuilder2 -f <fasta> -o <output.pdb>`
 
 ---
 
-## Task 2 — nf-core module for ABodyBuilder2 (Issue #5)
+## Task 2 — nf-core module for ABodyBuilder2 (Issue #5) ✅
 
-**File to create:** `modules/local/abodybuilder2/main.nf`
+**File:** `modules/local/abodybuilder2/main.nf`
 
 **Acceptance criteria:**
-- [ ] Accepts FASTA input, produces PDB output per candidate
-- [ ] Failed/invalid predictions are flagged (not silently skipped)
-- [ ] Follows nf-core module template (meta map, versions.yml, stub block)
-- [ ] Depends on Task 1 being done first
+- [x] Accepts FASTA input (`tuple val(meta), path(fasta)`), produces PDB output
+- [x] Failed predictions flagged via optional `*.failed.txt` (not silently skipped)
+- [x] Follows nf-core module template (meta map, versions.yml, stub block)
 
-**Module:**
-```nextflow
-process ABODYBUILDER2 {
-    tag "$meta.id"
-    label 'process_medium'
-
-    container 'abodybuilder2:latest'
-
-    input:
-    tuple val(meta), path(fasta)
-
-    output:
-    tuple val(meta), path("${meta.id}.pdb"),    emit: pdb
-    tuple val(meta), path("*.failed.txt"),       emit: failed, optional: true
-    path  "versions.yml",                        emit: versions
-
-    when:
-    task.ext.when == null || task.ext.when
-
-    script:
-    def args   = task.ext.args   ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    ABodyBuilder2 \\
-        --fasta ${fasta} \\
-        --output ./ \\
-        ${args} \\
-        || echo "FAILED: ${prefix}" > ${prefix}.failed.txt
-
-    # Rename output to include sample prefix if successful
-    if ls *.pdb 1>/dev/null 2>&1; then
-        mv *.pdb ${prefix}.pdb
-    fi
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        ImmuneBuilder: \$(python -c "import ImmuneBuilder; print(ImmuneBuilder.__version__)")
-    END_VERSIONS
-    """
-
-    stub:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    touch ${prefix}.pdb
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        ImmuneBuilder: 1.0.0
-    END_VERSIONS
-    """
-}
+**Channel contract:**
+```
+Input:  tuple val(meta), path(fasta)        ← from ANTIFOLD
+Output: tuple val(meta), path("${prefix}.pdb")   emit: pdb     → to BIOPHI_SAPIENS
+        tuple val(meta), path("*.failed.txt")     emit: failed  (optional)
+        path "versions.yml"                        emit: versions
 ```
 
 **Test:**
 ```bash
-# Stub test first (no Docker needed — just checks syntax)
-nextflow run modules/local/abodybuilder2/main.nf -stub
-
-# Real test (needs Task 1 done)
-nextflow run modules/local/abodybuilder2/main.nf \
-  -profile docker \
-  --input /tmp/test_antibody.fasta
+# Stub test — validates syntax, no Docker needed
+nextflow run . -stub -profile test --outdir ./results_stub
 ```
 
 ---
@@ -168,37 +109,44 @@ nextflow run modules/local/abodybuilder2/main.nf \
 
 **File to create:** `modules/local/biophi/oasis/main.nf`
 
-> Uses the **same Docker image as BioPhi Sapiens** (Issue #6 — built by Group 2a).
-> Coordinate with TheeOliver on the final image name before running real tests.
+> Uses the **same Docker image as BioPhi Sapiens** (built in Issue #6 by TheeOliver).
+> Confirm image name before writing `container` directive.
 
 **Acceptance criteria:**
-- [ ] Module queries OASis database and returns humanness scores
-- [ ] Output includes ranked list of candidates by humanness score
+- [ ] Accepts humanized FASTA + OASis DB path, produces `*_oasis.csv`
 - [ ] Follows nf-core module template
 - [ ] Depends on Issue #6 (BioPhi Docker image)
 
-**Module:**
+**Channel contract:**
+```
+Input:  tuple val(meta), path(fasta)        ← from BIOPHI_SAPIENS
+        path oasis_db                        ← params.oasis_db
+Output: tuple val(meta), path("${prefix}_oasis.csv")   emit: scores
+        path "versions.yml"                              emit: versions
+```
+
+**Module template:**
 ```nextflow
 process BIOPHI_OASIS {
     tag "$meta.id"
     label 'process_medium'
 
-    container 'biophi:latest'
+    container 'biophi:latest'   // confirm name with TheeOliver
 
     input:
     tuple val(meta), path(fasta)
     path  oasis_db
 
     output:
-    tuple val(meta), path("${meta.id}_oasis.csv"), emit: scores
+    tuple val(meta), path("${prefix}_oasis.csv"), emit: scores
     path  "versions.yml",                          emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
-    def args   = task.ext.args   ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    def args = task.ext.args ?: ''
+    prefix   = task.ext.prefix ?: "${meta.id}"
     """
     biophi oasis ${fasta} \\
         --oasis-db ${oasis_db} \\
@@ -212,7 +160,7 @@ process BIOPHI_OASIS {
     """
 
     stub:
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}_oasis.csv
     cat <<-END_VERSIONS > versions.yml
@@ -223,80 +171,43 @@ process BIOPHI_OASIS {
 }
 ```
 
-**Test:**
-```bash
-# Stub test (no Docker or DB needed)
-nextflow run modules/local/biophi/oasis/main.nf -stub
-
-# Real test (needs biophi:latest image + OASis DB)
-docker run --rm \
-  -v /tmp:/data \
-  -v /data/oasis:/oasis \
-  biophi:latest \
-  biophi oasis /data/humanized.fasta \
-  --oasis-db /oasis/OASis_9mers_v1.db \
-  --output /data/oasis_scores.csv
-```
-
 ---
 
 ## Task 4 — Wire end-to-end pipeline (Issue #9)
 
-**Files to create:**
-- `workflows/antibody_pipeline.nf`
-- `main.nf`
+**File to edit:** `workflows/antibodyoptimization.nf` (nf-core template stub — currently only runs MultiQC)
 
 **Acceptance criteria:**
-- [ ] Pipeline runs end to end from PDB input to ranked candidates
-- [ ] All four modules connected correctly (AntiFold → ABodyBuilder2 → BioPhi → OASis)
-- [ ] Output directory is clean and well-organised
+- [ ] All four modules wired: AntiFold → ABodyBuilder2 → BioPhi Sapiens → OASis
+- [ ] `ch_samplesheet` from `PIPELINE_INITIALISATION` feeds into `ANTIFOLD`
+- [ ] OASis DB passed via `params.oasis_db`
 - [ ] Depends on Issues #3, #5, #7, #8 all being done
 
-**`workflows/antibody_pipeline.nf`:**
+**Wiring sketch:**
 ```nextflow
 include { ANTIFOLD       } from '../modules/local/antifold/main'
 include { ABODYBUILDER2  } from '../modules/local/abodybuilder2/main'
 include { BIOPHI_SAPIENS } from '../modules/local/biophi/sapiens/main'
 include { BIOPHI_OASIS   } from '../modules/local/biophi/oasis/main'
 
-workflow ANTIBODY_PIPELINE {
-    // Single PDB input → meta map
-    ch_pdb = Channel
-        .fromPath(params.input)
-        .map { pdb -> [ [id: pdb.baseName], pdb ] }
+workflow ANTIBODYOPTIMIZATION {
+    take:
+    ch_samplesheet   // tuple val(meta), path(pdb) — from PIPELINE_INITIALISATION
 
-    // OASis DB as a single path (reused for all samples)
+    main:
     ch_oasis_db = file(params.oasis_db)
 
-    // Chain modules
-    ANTIFOLD       ( ch_pdb )
+    ANTIFOLD       ( ch_samplesheet )
     ABODYBUILDER2  ( ANTIFOLD.out.fasta )
     BIOPHI_SAPIENS ( ABODYBUILDER2.out.pdb )
     BIOPHI_OASIS   ( BIOPHI_SAPIENS.out.fasta, ch_oasis_db )
-
-    emit:
-    scores = BIOPHI_OASIS.out.scores
+    ...
 }
 ```
 
-**`main.nf`:**
-```nextflow
-#!/usr/bin/env nextflow
-nextflow.enable.dsl = 2
-
-include { ANTIBODY_PIPELINE } from './workflows/antibody_pipeline'
-
-workflow {
-    ANTIBODY_PIPELINE ()
-}
-```
-
-**Test (stub — validates wiring before all images are ready):**
+**Stub test (validates wiring before all images are ready):**
 ```bash
-nextflow run . -stub \
-  --input /data/pdb/6y1l.pdb \
-  --oasis_db /data/oasis/OASis_9mers_v1.db \
-  --outdir ./results_stub
+nextflow run . -stub -profile test --oasis_db /data/oasis/OASis_9mers_v1.db --outdir ./results_stub
 ```
 
 ---
@@ -309,19 +220,10 @@ nextflow run . -stub \
 - [ ] ABodyBuilder2 produces refolded structures
 - [ ] BioPhi produces humanized sequences
 - [ ] OASis produces humanness scores
-- [ ] Final output contains ranked candidates
 
-**Exact command from the issue:**
+**Run command:**
 ```bash
-nextflow run . -profile docker \
-  --input /data/pdb/6y1l.pdb \
-  --outdir ./results
-```
-
-**For OASis you'll also need:**
-```bash
-nextflow run . -profile docker \
-  --input /data/pdb/6y1l.pdb \
+nextflow run . -profile docker,test \
   --oasis_db /data/oasis/OASis_9mers_v1.db \
   --outdir ./results
 ```
@@ -331,39 +233,46 @@ nextflow run . -profile docker \
 ls results/antifold/          # FASTA candidates
 ls results/abodybuilder2/     # PDB structures + any *.failed.txt
 ls results/biophi/sapiens/    # humanized FASTA
-ls results/biophi/oasis/      # *_oasis.csv — ranked candidates
+ls results/biophi/oasis/      # *_oasis.csv
 ```
 
 ---
 
-## Recommended working order
+## Working order
 
 ```
-[x] Issue #1   →  samplesheet/schema/test.config updated for PDB input
-[x] Task 1     →  docker/abodybuilder2/Dockerfile — ABodyBuilder2 --help confirmed
-[x] Task 2     →  modules/local/abodybuilder2/main.nf — created
-[ ] Task 2     →  stub test: nextflow run . -stub --input assets/test_samplesheet.csv (needs pipeline wiring first)
-[ ] Task 3     →  modules/local/biophi/oasis/main.nf — waiting on biophi:latest from TheeOliver (#6)
-[ ] Task 4     →  workflows/antibody_pipeline.nf wired (#9) — depends on #3, #5, #7, #8
-[ ] Task 5     →  nextflow run . -profile docker  (all modules + images done)
+[x] Issue #1  →  assets/samplesheet.csv, schema_input.json, conf/test.config, assets/samplesheet_test.csv
+[x] Issue #4  →  docker/abodybuilder2/Dockerfile — built and smoke-tested
+[x] Issue #5  →  modules/local/abodybuilder2/main.nf — created
+[ ] Issue #8  →  modules/local/biophi/oasis/main.nf — blocked on biophi image name from TheeOliver (#6)
+[ ] Issue #7  →  modules/local/biophi/sapiens/main.nf — Group 2a (TheeOliver)
+[ ] Issue #3  →  modules/local/antifold/main.nf — Group 2a (avitanov)
+[ ] Issue #9  →  wire workflows/antibodyoptimization.nf — once #3, #5, #7, #8 done
+[ ] Issue #10 →  end-to-end test — once #9 done
 ```
 
 ---
 
-## Files you will create
+## Files — current state
 
 ```
 nf-core-antibody-pipeline/
+├── assets/
+│   ├── samplesheet.csv               ← template (sample,pdb,chain_heavy,chain_light)
+│   ├── samplesheet_test.csv          ← test entry: 6y1l_imgt.pdb H L  ✅
+│   └── schema_input.json             ← validates PDB samplesheet  ✅
+├── conf/
+│   └── test.config                   ← points to samplesheet_test.csv  ✅
 ├── docker/
 │   └── abodybuilder2/
-│       └── Dockerfile                    ← Issue #4
+│       └── Dockerfile                ← Issue #4  ✅
 ├── modules/local/
 │   ├── abodybuilder2/
-│   │   └── main.nf                       ← Issue #5
+│   │   └── main.nf                   ← Issue #5  ✅
+│   ├── antifold/                     ← Issue #3  (Group 2a — pending)
 │   └── biophi/
-│       └── oasis/
-│           └── main.nf                   ← Issue #8
-├── workflows/
-│   └── antibody_pipeline.nf              ← Issue #9
-└── main.nf                               ← Issue #9
+│       ├── sapiens/                  ← Issue #7  (Group 2a — pending)
+│       └── oasis/                    ← Issue #8  (pending, blocked on image)
+└── workflows/
+    └── antibodyoptimization.nf       ← Issue #9  (pending — needs all modules)
 ```

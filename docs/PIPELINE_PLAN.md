@@ -9,34 +9,62 @@
 Sequential nf-core DSL2 pipeline:
 
 ```
-FASTA (H+L chains)
+PDB input (antibody structure, IMGT-numbered)
     │
     ▼
-ABodyBuilder2  →  structure prediction (PDB)
+AntiFold       →  CDR inverse folding → redesigned FASTA candidates
     │
     ▼
-AntiFold       →  inverse folding → variant sequences (FASTA + CSV)
+ABodyBuilder2  →  structure prediction → PDB per candidate
     │
     ▼
-BioPhi         →  Sapiens humanness score + OASis humanness percentile
+BioPhi Sapiens →  humanization → humanized sequences (FASTA)
     │
     ▼
-rank_candidates.py  →  ranked TSV of best candidates
+OASis          →  humanness scoring against observed antibody space (CSV)
 ```
 
 ---
 
 ## Test Data
 
-| Resource | How to get |
-|----------|-----------|
-| Test PDB (6y1l) | `wget https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab/pdb/6y1l/` |
-| AntiFold test data | Included at `AntiFold/data/` when you clone the repo |
-| OASis DB (~22 GB) | `wget https://zenodo.org/record/5164685/files/OASis_9mers_v1.db.gz` → store at `/data/oasis/` |
+| Resource | Host path | Notes |
+|----------|-----------|-------|
+| Test PDB (6y1l, IMGT-numbered) | `/data/antifold/pdbs/6y1l_imgt.pdb` | Pre-staged — do not download |
+| OASis DB (~22 GB) | `/data/oasis/OASis_9mers_v1.db` | Pre-staged — do not download |
+
+Test samplesheet: `assets/samplesheet_test.csv`
 
 ---
 
-## Tasks (work through in order)
+## Input Format
+
+Samplesheet CSV passed to `--input`:
+
+```csv
+sample,pdb,chain_heavy,chain_light
+6y1l,/data/antifold/pdbs/6y1l_imgt.pdb,H,L
+```
+
+Schema validated by `assets/schema_input.json` via nf-schema plugin.
+The `chain_heavy` and `chain_light` columns are pulled into the `meta` map and passed through all module boundaries.
+
+---
+
+## Channel Contract
+
+| Boundary | Shape |
+|----------|-------|
+| Input → AntiFold | `tuple val(meta), path(pdb)` |
+| AntiFold → ABodyBuilder2 | `tuple val(meta), path(fasta)` |
+| ABodyBuilder2 → BioPhi Sapiens | `tuple val(meta), path(pdb)` |
+| BioPhi Sapiens → OASis | `tuple val(meta), path(fasta)` |
+
+`meta` map must carry: `id`, `sample`, `chain_heavy`, `chain_light`.
+
+---
+
+## Tasks
 
 ---
 
@@ -44,227 +72,160 @@ rank_candidates.py  →  ranked TSV of best candidates
 
 Build and test each container individually before writing any Nextflow.
 
-#### 1a. ABodyBuilder2 (`docker/abodybuilder2/Dockerfile`)
+#### 1a. ABodyBuilder2 (`docker/abodybuilder2/Dockerfile`) ✅
 
-- Base: `mambaorg/micromamba:1.5.8`
-- Install: `python=3.9 pytorch numpy scipy einops openmm pdbfixer` via conda
-- Install: `ImmuneBuilder anarci` via pip
-- Include wrapper script `/usr/local/bin/run_abodybuilder2.py` that:
-  - Reads a FASTA file with `>sample_H` and `>sample_L` entries
-  - Calls `ABodyBuilder2().predict({'H': hseq, 'L': lseq}).save('output.pdb')`
+- Base: `continuumio/miniconda3:latest`
+- Conda: `python=3.10 openmm pdbfixer`
+- Pip: `torch` (CPU), `anarci`, `ImmuneBuilder`
+- ENTRYPOINT: `/bin/bash`
+
+**CLI (confirmed):** `ABodyBuilder2 -f <fasta> -o <output.pdb>` — FASTA headers must be `>H` and `>L`
 
 **Test:**
 ```bash
-docker build -t ab2:test docker/abodybuilder2/
-docker run --rm -v $(pwd)/test_data:/data ab2:test \
-  python /usr/local/bin/run_abodybuilder2.py \
-  --fasta /data/trastuzumab.fasta --output /data/trastuzumab.pdb
-# Expected: /data/trastuzumab.pdb created
+docker build -t abodybuilder2:latest docker/abodybuilder2/
+docker run --rm abodybuilder2:latest ABodyBuilder2 --help
+docker run --rm -v /tmp:/data abodybuilder2:latest \
+  ABodyBuilder2 -f /data/test.fasta -o /data/out.pdb
 ```
 
 ---
 
-#### 1b. AntiFold (`docker/antifold/Dockerfile`)
+#### 1b. AntiFold (`docker/antifold/Dockerfile`) — Group 2a (Issue #2)
 
 - Base: `pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime`
-- Install: `pip install antifold`
+- Pip: `antifold`
 - CLI: `python -m antifold.main`
 
 **Test:**
 ```bash
-docker build -t antifold:test docker/antifold/
-docker run --rm -v $(pwd)/test_data:/data antifold:test \
+docker build -t antifold:latest docker/antifold/
+docker run --rm -v /data/antifold/pdbs:/data antifold:latest \
   python -m antifold.main \
   --pdb_file /data/6y1l_imgt.pdb \
   --heavy_chain H --light_chain L \
   --num_seq_per_target 3 --sampling_temp 0.2 \
   --out_dir /data/antifold_out/
-# Expected: /data/antifold_out/ contains .fasta and .csv files
 ```
 
 ---
 
-#### 1c. BioPhi (`docker/biophi/Dockerfile`)
+#### 1c. BioPhi (`docker/biophi/Dockerfile`) — Group 2a (Issue #6)
 
 - Base: `mambaorg/micromamba:1.5.8`
-- Conda install: `biophi python=3.9 -c bioconda -c conda-forge`
+- Conda: `biophi python=3.9 -c bioconda -c conda-forge`
 - OASis DB is **not** baked into image — mounted at runtime via `params.oasis_db`
 
-**Test (Sapiens only — no DB needed):**
+**Test (Sapiens, no DB):**
 ```bash
-docker build -t biophi:test docker/biophi/
-docker run --rm -v $(pwd)/test_data:/data biophi:test \
+docker build -t biophi:latest docker/biophi/
+docker run --rm -v /tmp:/data biophi:latest \
   biophi sapiens /data/variants.fasta --scores-only --output /data/sapiens.csv
-# Expected: /data/sapiens.csv with per-residue scores
 ```
 
-**Test (OASis — needs DB):**
+**Test (OASis, needs DB):**
 ```bash
 docker run --rm \
-  -v $(pwd)/test_data:/data \
+  -v /tmp:/data \
   -v /data/oasis:/oasis \
-  biophi:test \
+  biophi:latest \
   biophi oasis /data/variants.fasta \
   --oasis-db /oasis/OASis_9mers_v1.db \
-  --output /data/oasis_scores.xlsx
+  --output /data/oasis_scores.csv
 ```
 
 ---
 
 ### Task 2 — Nextflow Modules
 
-One module per tool. Write and test with `nextflow run` using `-stub` mode first, then real data.
-
-#### 2a. `modules/local/abodybuilder2/main.nf`
-
-```
-Input:  tuple val(meta), path(fasta)
-Output: tuple val(meta), path("${meta.id}.pdb"),   emit: pdb
-        tuple val(meta), path("*.version.txt"),     emit: versions
-```
-
-#### 2b. `modules/local/antifold/main.nf`
+#### 2a. `modules/local/antifold/main.nf` — Group 2a (Issue #3)
 
 ```
 Input:  tuple val(meta), path(pdb)
-Output: tuple val(meta), path("*.fasta"),   emit: fasta
-        tuple val(meta), path("*.csv"),     emit: scores
-        tuple val(meta), path("*.version.txt"), emit: versions
-
-Params used: params.num_seq, params.sampling_temp, params.regions
+Output: tuple val(meta), path("*.fasta"),  emit: fasta
+        tuple val(meta), path("*.csv"),    emit: scores
+        path "versions.yml",               emit: versions
 ```
 
-#### 2c. `modules/local/biophi/main.nf`
+#### 2b. `modules/local/abodybuilder2/main.nf` ✅ (Issue #5)
+
+```
+Input:  tuple val(meta), path(fasta)
+Output: tuple val(meta), path("${prefix}.pdb"),    emit: pdb
+        tuple val(meta), path("*.failed.txt"),      emit: failed (optional)
+        path "versions.yml",                         emit: versions
+```
+
+CLI: `ABodyBuilder2 -f ${fasta} -o ${prefix}.pdb`
+
+#### 2c. `modules/local/biophi/sapiens/main.nf` — Group 2a (Issue #7)
+
+```
+Input:  tuple val(meta), path(pdb)
+Output: tuple val(meta), path("*_sapiens.fasta"),  emit: fasta
+        tuple val(meta), path("*_sapiens.csv"),    emit: scores
+        path "versions.yml",                        emit: versions
+```
+
+#### 2d. `modules/local/biophi/oasis/main.nf` — US (Issue #8)
 
 ```
 Input:  tuple val(meta), path(fasta)
         path oasis_db
-Output: tuple val(meta), path("*_sapiens.csv"),   emit: sapiens
-        tuple val(meta), path("*_oasis.xlsx"),     emit: oasis
-        tuple val(meta), path("*.version.txt"),    emit: versions
+Output: tuple val(meta), path("${prefix}_oasis.csv"),  emit: scores
+        path "versions.yml",                             emit: versions
 ```
 
-**Test each module:**
+CLI: `biophi oasis ${fasta} --oasis-db ${oasis_db} --output ${prefix}_oasis.csv`
+
+---
+
+### Task 3 — Main Workflow (Issue #9)
+
+**File to edit:** `workflows/antibodyoptimization.nf`
+
+Wire all four modules. Input comes from `PIPELINE_INITIALISATION` as `tuple val(meta), path(pdb)`.
+
+```nextflow
+include { ANTIFOLD       } from '../modules/local/antifold/main'
+include { ABODYBUILDER2  } from '../modules/local/abodybuilder2/main'
+include { BIOPHI_SAPIENS } from '../modules/local/biophi/sapiens/main'
+include { BIOPHI_OASIS   } from '../modules/local/biophi/oasis/main'
+
+workflow ANTIBODYOPTIMIZATION {
+    take:
+    ch_samplesheet
+
+    main:
+    ch_oasis_db = file(params.oasis_db)
+
+    ANTIFOLD       ( ch_samplesheet )
+    ABODYBUILDER2  ( ANTIFOLD.out.fasta )
+    BIOPHI_SAPIENS ( ABODYBUILDER2.out.pdb )
+    BIOPHI_OASIS   ( BIOPHI_SAPIENS.out.fasta, ch_oasis_db )
+    ...
+}
+```
+
+**Stub test:**
 ```bash
-nextflow run modules/local/abodybuilder2/main.nf -profile test,docker -stub
+nextflow run . -stub -profile test --oasis_db /data/oasis/OASis_9mers_v1.db --outdir ./results_stub
 ```
 
 ---
 
-### Task 3 — Input Validation Subworkflow
-
-`subworkflows/local/input_check/main.nf`
-
-Reads the CSV samplesheet, validates it has `sample` and `fasta` columns, checks files exist, emits `[ [id: row.sample], file(row.fasta) ]` channel.
-
-**Samplesheet format:**
-```csv
-sample,fasta
-trastuzumab,/abs/path/trastuzumab.fasta
-```
-
----
-
-### Task 4 — Main Workflow
-
-`workflows/antibody_optimization.nf`
-
-```nextflow
-include { INPUT_CHECK       } from '../subworkflows/local/input_check/main'
-include { ABODYBUILDER2     } from '../modules/local/abodybuilder2/main'
-include { ANTIFOLD          } from '../modules/local/antifold/main'
-include { BIOPHI            } from '../modules/local/biophi/main'
-
-workflow ANTIBODY_OPTIMIZATION {
-    INPUT_CHECK ( params.input )
-    ABODYBUILDER2 ( INPUT_CHECK.out.reads )
-    ANTIFOLD      ( ABODYBUILDER2.out.pdb )
-    BIOPHI        ( ANTIFOLD.out.fasta, file(params.oasis_db) )
-}
-```
-
----
-
-### Task 5 — Ranking Script
-
-`bin/rank_candidates.py`
-
-- Reads `*_sapiens.csv` (per-residue scores → compute mean Sapiens score per sequence)
-- Reads `*_oasis.xlsx` (OASis humanness percentile per sequence)
-- Joins on sequence ID
-- Outputs `ranked_candidates.tsv` sorted by `sapiens_score * oasis_percentile / 100`
-
----
-
-### Task 6 — Configuration
-
-#### `conf/base.config`
-CPU/memory labels: `process_low`, `process_medium`, `process_high`
-
-#### `conf/modules.config`
-`publishDir` rules — where each module writes outputs under `params.outdir`
-
-#### `conf/test.config`
-```nextflow
-params {
-    input        = "${projectDir}/assets/test_samplesheet.csv"
-    oasis_db     = "${projectDir}/assets/test_oasis_stub.db"   // tiny stub for CI
-    num_seq      = 3
-    sampling_temp = 0.5
-    outdir       = 'test_results'
-}
-```
-- `assets/test_samplesheet.csv` points to trastuzumab FASTA in `assets/`
-- Stub OASis DB: minimal SQLite file with a few 9-mers (skips 22 GB download)
-
----
-
-### Task 7 — Entry Point + Schema
-
-#### `main.nf`
-Standard nf-core entry point that calls `ANTIBODY_OPTIMIZATION`.
-
-#### `nextflow.config`
-```nextflow
-profiles {
-    docker     { docker.enabled = true; docker.runOptions = '-u $(id -u):$(id -g)' }
-    singularity { singularity.enabled = true; singularity.autoMounts = true }
-    test       { includeConfig 'conf/test.config' }
-}
-```
-
-Container assignments:
-```nextflow
-process {
-    withName: 'ABODYBUILDER2' { container = 'antibody-optimization/abodybuilder2:latest' }
-    withName: 'ANTIFOLD'      { container = 'antibody-optimization/antifold:latest' }
-    withName: 'BIOPHI'        { container = 'antibody-optimization/biophi:latest' }
-}
-```
-
-#### `nextflow_schema.json`
-nf-validation schema listing all params with types, descriptions, defaults.
-
----
-
-### Task 8 — End-to-End Test
+### Task 4 — End-to-End Test (Issue #10)
 
 ```bash
-cd antibody-optimization
+nextflow run . -profile docker,test \
+  --oasis_db /data/oasis/OASis_9mers_v1.db \
+  --outdir ./results
 
-# Build images
-docker build -t antibody-optimization/abodybuilder2:latest docker/abodybuilder2/
-docker build -t antibody-optimization/antifold:latest docker/antifold/
-docker build -t antibody-optimization/biophi:latest docker/biophi/
-
-# Run test profile
-nextflow run main.nf -profile test,docker --outdir test_results
-
-# Verify outputs
-ls test_results/abodybuilder2/   # *.pdb
-ls test_results/antifold/        # *.fasta, *.csv
-ls test_results/biophi/          # *_sapiens.csv, *_oasis.xlsx
-cat test_results/ranking/*.tsv   # ranked candidates
+# Verify
+ls results/antifold/          # FASTA candidates
+ls results/abodybuilder2/     # PDB structures + *.failed.txt
+ls results/biophi/sapiens/    # humanized FASTA + Sapiens scores
+ls results/biophi/oasis/      # *_oasis.csv — humanness scores
 ```
 
 ---
@@ -273,8 +234,8 @@ cat test_results/ranking/*.tsv   # ranked candidates
 
 | Param | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `--input` | yes | — | Samplesheet CSV (sample, fasta columns) |
-| `--oasis_db` | yes | — | Path to OASis_9mers_v1.db |
+| `--input` | yes | — | Samplesheet CSV (`sample,pdb,chain_heavy,chain_light`) |
+| `--oasis_db` | yes | — | Path to `OASis_9mers_v1.db` |
 | `--outdir` | yes | `results` | Output directory |
 | `--num_seq` | no | `10` | Variant sequences per target (AntiFold) |
 | `--sampling_temp` | no | `0.2` | Sampling temperature (AntiFold) |
@@ -282,35 +243,30 @@ cat test_results/ranking/*.tsv   # ranked candidates
 
 ---
 
-## Files to Create (complete list)
+## Files — current state
 
 ```
-antibody-optimization/
-├── main.nf
-├── nextflow.config
-├── nextflow_schema.json
-├── CITATIONS.md
+nf-core-antibody-pipeline/
 ├── assets/
-│   ├── schema_input.json
-│   ├── test_samplesheet.csv
-│   ├── trastuzumab.fasta
-│   └── test_oasis_stub.db
-├── bin/
-│   └── rank_candidates.py
+│   ├── samplesheet.csv               ✅  template (sample,pdb,chain_heavy,chain_light)
+│   ├── samplesheet_test.csv          ✅  test entry pointing to 6y1l_imgt.pdb
+│   └── schema_input.json             ✅  PDB validation schema
 ├── conf/
-│   ├── base.config
-│   ├── modules.config
-│   └── test.config
+│   ├── base.config                   ✅  resource labels
+│   ├── modules.config                ✅  publishDir rules
+│   └── test.config                   ✅  points to samplesheet_test.csv
 ├── docker/
-│   ├── abodybuilder2/Dockerfile
-│   ├── antifold/Dockerfile
-│   └── biophi/Dockerfile
+│   ├── abodybuilder2/Dockerfile      ✅  Issue #4
+│   ├── antifold/Dockerfile           ⏳  Issue #2 (Group 2a)
+│   └── biophi/Dockerfile             ⏳  Issue #6 (Group 2a)
 ├── modules/local/
-│   ├── abodybuilder2/main.nf
-│   ├── antifold/main.nf
-│   └── biophi/main.nf
+│   ├── abodybuilder2/main.nf         ✅  Issue #5
+│   ├── antifold/main.nf              ⏳  Issue #3 (Group 2a)
+│   └── biophi/
+│       ├── sapiens/main.nf           ⏳  Issue #7 (Group 2a)
+│       └── oasis/main.nf             ⏳  Issue #8 (blocked on #6)
 ├── subworkflows/local/
-│   └── input_check/main.nf
+│   └── utils_nfcore_antibodyoptimization_pipeline/main.nf  ✅  PDB samplesheet parsing
 └── workflows/
-    └── antibody_optimization.nf
+    └── antibodyoptimization.nf       ⏳  Issue #9 — wire modules here
 ```
