@@ -25,8 +25,8 @@ Agents MUST follow these rules unless a user explicitly overrides them in the cu
 
 ### What This Project Does
 
-End-to-end nf-core Nextflow pipeline for antibody optimization. Takes FASTA sequences as input
-and produces redesigned, structurally verified, and humanized antibody structures (PDB) with humanness scores.
+End-to-end nf-core Nextflow pipeline for antibody optimization. Takes an antibody PDB structure as input
+and produces redesigned, structurally verified, and humanized antibody sequences with OASis humanness scores.
 
 The pipeline is composed of four modules that connect into a single end-to-end workflow:
 AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
@@ -40,22 +40,22 @@ AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
 | Containers | Docker (primary) |
 | Module testing | nf-test |
 | Linting / validation | nf-core lint, nf-core schema lint |
-| Input format | FASTA sequences via samplesheet CSV |
+| Input format | PDB structure file via samplesheet CSV |
 
 ### Pipeline Stage Order
 
 ```
-FASTA input
+PDB input (antibody structure)
    ↓
-AntiFold          — CDR redesign
+AntiFold          — CDR redesign via inverse folding → redesigned FASTA candidates
    ↓
-ABodyBuilder2     — structure prediction → PDB
+ABodyBuilder2     — structure prediction → PDB per candidate
    ↓
-BioPhi Sapiens    — humanization scoring and redesign
+BioPhi Sapiens    — humanization → humanized sequences
    ↓
 OASis             — humanness scoring against observed antibody space
    ↓
-results/ (PDB + scores)
+results/ (ranked candidates: sequences + humanness scores)
 ```
 
 ### Channel Contract
@@ -64,7 +64,7 @@ Preserve these channel shapes at module boundaries:
 
 | Boundary | Channel shape |
 |---|---|
-| Input → AntiFold | `tuple val(meta), path(fasta)` |
+| Input → AntiFold | `tuple val(meta), path(pdb)` |
 | AntiFold → ABodyBuilder2 | `tuple val(meta), path(redesigned_fasta)` |
 | ABodyBuilder2 → BioPhi | `tuple val(meta), path(predicted_pdb)` |
 | BioPhi → OASis | `tuple val(meta), path(humanized_fasta)` |
@@ -80,8 +80,8 @@ Do not add meta fields without updating all affected modules.
 # Run full pipeline
 nextflow run main.nf -profile docker --input samplesheet.csv --outdir results
 
-# Run with test data
-nextflow run main.nf -profile test,docker --outdir results
+# Run with test data (uses 6y1l.pdb)
+nextflow run . -profile docker --input /data/pdb/6y1l.pdb --outdir ./results
 
 # Lint entire pipeline
 nf-core lint
@@ -97,12 +97,21 @@ nf-test test <path/to/tests/>
 
 ## Input Format
 
-Primary input: FASTA sequence files via a samplesheet CSV passed to `--input`:
+Primary input: antibody PDB structure file(s) via a samplesheet CSV passed to `--input`:
 
 ```csv
-sample,fasta,chain_heavy,chain_light
-Ab001,/path/to/Ab001.fasta,H,L
+sample,pdb,chain_heavy,chain_light
+Ab001,/path/to/Ab001.pdb,H,L
 ```
+
+### Host Data Paths
+
+These paths are pre-staged on the host and must be mounted into containers where needed:
+
+| Data | Host path | Notes |
+|---|---|---|
+| Test PDB | `/data/pdb/6y1l.pdb` | SAbDab entry, IMGT-numbered |
+| OASis database | `/data/oasis/OASis_9mers_v1.db` | ~22 GB; mount read-only into OASis container |
 
 ---
 
@@ -205,6 +214,30 @@ Examples:
 - Branch: `feat/antifold-module`, `fix/meta-map-missing-field`
 - Commit: `feat(modules): add AntiFold CDR redesign process`
 - PR title: `fix(subworkflows): pass chain fields through meta in redesign subworkflow`
+
+---
+
+## Issue Tracker & Dependency Map
+
+Current open issues and their status. Use this to understand sequencing before starting work.
+
+| # | Title | Label | Status | Depends on |
+|---|---|---|---|---|
+| #1 | Initialise pipeline using nf-core template | pipeline | template + repo done; README pending | — |
+| #2 | Write custom Dockerfile for AntiFold | dockerfile | not started | — |
+| #3 | Write nf-core module for AntiFold CDR redesign | module | not started | #2 |
+| #4 | Write custom Dockerfile for ABodyBuilder2 | dockerfile | not started | — |
+| #5 | Write nf-core module for ABodyBuilder2 structural verification | module | not started | #4 |
+| #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | dockerfile | Dockerfile + BioPhi done; OASis DB mount pending | — |
+| #7 | Write nf-core module for BioPhi Sapiens humanization | module | not started | #6 |
+| #8 | Write nf-core module for OASis humanness scoring | module | not started | #6 |
+| #9 | Wire all modules into end-to-end pipeline | pipeline | not started | #3 #5 #7 #8 |
+| #10 | End-to-end test run with 6y1l test PDB | testing | not started | #9 |
+
+### Notes
+- BioPhi and OASis share one Dockerfile (conda install `biophi` installs both).
+- OASis requires the database at `/data/oasis/OASis_9mers_v1.db` to be mounted at runtime.
+- The nf-core template (Issue #1) must be applied before any module work — it defines the directory layout.
 
 ---
 
