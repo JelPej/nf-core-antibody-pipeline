@@ -65,6 +65,24 @@ nextflow run nf-core/antibodyoptimization \
 
 For more details and further functionality, please refer to the [usage documentation](https://nf-co.re/antibodyoptimization/usage) and the [parameter documentation](https://nf-co.re/antibodyoptimization/parameters).
 
+## Testing
+
+A minimal test profile is provided that runs the pipeline against a pre-staged antibody structure ([6Y1L](https://www.rcsb.org/structure/6Y1L), IMGT-numbered).
+
+**Stub run** (no containers required, validates workflow logic only):
+
+```bash
+nextflow run . -profile test,docker --outdir ./results -stub
+```
+
+**Full test run** (requires the test PDB to be available on the host at `/data/antifold/pdbs/6y1l_imgt.pdb`):
+
+```bash
+nextflow run . -profile test,docker --outdir ./results
+```
+
+The test samplesheet (`assets/samplesheet_test.csv`) uses chain IDs `H` (heavy) and `L` (light).
+
 ## Pipeline output
 
 To see the results of an example test run with a full size dataset refer to the [results](https://nf-co.re/antibodyoptimization/results) tab on the nf-core website pipeline page.
