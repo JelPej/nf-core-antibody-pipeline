@@ -77,44 +77,6 @@ Do not add meta fields without coordinating with both groups.
 
 ---
 
-## Scope
-
-| Area | Default behaviour |
-|---|---|
-| `modules/local/`, `subworkflows/local/`, `workflows/` | In scope — read and modify freely |
-| `conf/`, `assets/`, `nextflow.config`, `main.nf` | In scope — modify carefully; pipeline-wide impact |
-| `README.md` | In scope — update when public-facing behaviour changes |
-| `bin/` | In scope — custom scripts called by processes |
-| Test data files (`.pdb`, `.fasta`) | **Never modify** — managed outside git |
-
----
-
-## Repository Map
-
-```
-nf-core-antibody-pipeline/
-├── main.nf                          # Entry point: ANTIBODY_PIPELINE workflow
-├── nextflow.config                  # Global params, profiles, process defaults
-├── workflows/
-│   └── antibody_pipeline.nf         # Top-level workflow wiring subworkflows
-├── subworkflows/local/
-│   ├── redesign/main.nf             # AntiFold → ABodyBuilder2
-│   └── humanize/main.nf             # BioPhi → OASis
-├── modules/local/
-│   ├── antifold/main.nf
-│   ├── abodybuilder2/main.nf
-│   ├── biphi_sapiens/main.nf
-│   └── oasis/main.nf
-├── conf/
-│   ├── base.config                  # Resource labels and defaults
-│   └── test.config                  # Minimal params for test profile
-├── assets/
-│   └── schema_input.json            # Samplesheet validation schema
-└── bin/                             # Custom helper scripts
-```
-
----
-
 ## Common Commands
 
 ```bash
@@ -130,18 +92,8 @@ nf-core lint
 # Validate nextflow_schema.json
 nf-core schema lint
 
-# Test a single module
-nf-test test modules/local/antifold/tests/
-nf-test test modules/local/abodybuilder2/tests/
-nf-test test modules/local/biphi_sapiens/tests/
-nf-test test modules/local/oasis/tests/
-
-# Test a subworkflow
-nf-test test subworkflows/local/redesign/tests/
-nf-test test subworkflows/local/humanize/tests/
-
-# Test full workflow
-nf-test test workflows/tests/
+# Test a module or subworkflow
+nf-test test <path/to/tests/>
 ```
 
 ---
@@ -155,15 +107,12 @@ sample,pdb,chain_heavy,chain_light
 Ab001,/path/to/Ab001.pdb,H,L
 ```
 
-`assets/schema_input.json` defines and validates the samplesheet schema. Any new input fields
-MUST be added to this schema.
-
 ---
 
 ## Key Architectural Decisions — Do Not Reverse Without Discussion
 
-- **All four tools are local modules** under `modules/local/` — not nf-core community modules.
-  Do not attempt to replace them with community equivalents without explicit instruction.
+- **All four tools are local modules** — not nf-core community modules. Do not replace them with
+  community equivalents without explicit instruction.
 - **Docker is the only supported profile** at this stage. Do not add Singularity/Conda profiles
   unless explicitly requested.
 - **The `meta` map is the cross-module contract.** Every process must pass `meta` through
@@ -171,17 +120,15 @@ MUST be added to this schema.
 - **`versions` channel is mandatory** in every process. Never omit it, even in draft modules.
 - **Resource labels** (`process_low`, `process_medium`, `process_high`) are defined in
   `conf/base.config`. Assign them based on expected compute; do not hardcode CPUs/memory in modules.
-- **Test config** (`conf/test.config`) must use minimal input data (single PDB) to allow fast CI runs.
 
 ---
 
 ## Required Workflow
 
 1. **Read before writing.** Inspect relevant module, subworkflow, and config files before making changes.
-2. **Check existing modules before implementing.** Before writing new logic, verify no equivalent
-   module or bin script already exists.
+2. **Check existing modules before implementing.** Verify no equivalent module or bin script already exists.
 3. **Keep changes minimal and task-focused.** Do not refactor surrounding modules unless asked.
-4. **Run validation before finishing.** See Command Policy above.
+4. **Run validation before finishing.** At minimum: `nf-core lint` and targeted `nf-test` for changed modules.
 5. **Report clearly.** State what changed, what was validated, and any known gaps or limitations.
 
 ---
@@ -222,24 +169,6 @@ MUST be added to this schema.
 - No `println` debug statements in committed code.
 - No optional/nullable channel branches unless the pipeline explicitly supports optional steps.
 - Trust upstream channel outputs — do not add redundant existence checks inside processes.
-
----
-
-## Testing and Validation Rules
-
-- Every module MUST have an nf-test file at `modules/local/<tool>/tests/main.nf.test`.
-- Every subworkflow MUST have an nf-test file at `subworkflows/local/<name>/tests/main.nf.test`.
-- Tests use minimal real input data (single PDB/FASTA). Do not use synthetic data that would
-  never appear in a real run.
-- At minimum, run `nf-core lint` and the targeted `nf-test` tests for any changed module.
-- If tests cannot run (e.g. missing Docker or tool license), state what was skipped and why.
-
-### Test Quality Rules
-
-- **Realistic over exhaustive.** Test inputs must reflect real antibody data shapes.
-- **No redundancy.** Each test covers a distinct behaviour. Do not duplicate assertions across tests.
-- **Assert outputs exist and are non-empty.** Also assert versions.yml is emitted.
-- **No trivial coverage padding.** Every test must be justified by a real regression risk.
 
 ---
 
