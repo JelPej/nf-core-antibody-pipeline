@@ -106,3 +106,51 @@ You can cite the `nf-core` publication as follows:
 > Philip Ewels, Alexander Peltzer, Sven Fillinger, Harshil Patel, Johannes Alneberg, Andreas Wilm, Maxime Ulysse Garcia, Paolo Di Tommaso & Sven Nahnsen.
 >
 > _Nat Biotechnol._ 2020 Feb 13. doi: [10.1038/s41587-020-0439-x](https://dx.doi.org/10.1038/s41587-020-0439-x).
+
+
+# Go to repo on the EC2 instance
+cd ~/nf-core-antibody-pipeline
+# Build the Docker image (uses Dockerfile in this repo)
+sudo docker build -t howlinman/biophi-oasis:latest .# Ensure the OASis DB is available on the host
+ls /data/oasis
+# expected: OASis_9mers_v1.db or OASis_9mers_v1.db.gz# If the DB is gzipped, uncompress once
+cd /data/oasis
+sudo gunzip OASis_9mers_v1.db.gz
+
+# Quick Sapiens test: create a small FASTA
+cd ~/nf-core-antibody-pipeline
+
+cat > test.fa << 'EOF'
+>test_ab_heavy
+EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVK
+GRFTISRDNAKNTVYLQMNSLKPEDTAVYYCARGGYYGMDYWGQGTLVTVSS
+EOF
+
+# Run Sapiens humanization (writes humanized.fa)
+sudo docker run --rm -it \
+  -u $(id -u):$(id -g) \
+  -v "$PWD":/work \
+  howlinman/biophi-oasis:latest \
+  biophi sapiens /work/test.fa \
+    --fasta-only \
+    --output /work/humanized.fa
+
+# Quick OASis test: create example FASTA
+cd ~/nf-core-antibody-pipeline
+
+cat > my_real_data.fa << 'EOF'
+>example_antibody
+EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVK
+GRFTISRDNAKNTVYLQMNSLKPEDTAVYYCARGGYYGMDYWGQGTLVTVSS
+EOF
+
+# Run OASis with DB mounted from /data/oasis
+sudo docker run --rm -it \
+  -u $(id -u):$(id -g) \
+  -v "$PWD":/work \
+  -v /data/oasis:/data/oasis \
+  howlinman/biophi-oasis:latest \
+  biophi oasis /work/my_real_data.fa \
+    --output /work/my_real_oasis_report.xlsx \
+    --oasis-db /data/oasis/OASis_9mers_v1.db
+
