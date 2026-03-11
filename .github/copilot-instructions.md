@@ -25,8 +25,8 @@ Agents MUST follow these rules unless a user explicitly overrides them in the cu
 
 ### What This Project Does
 
-End-to-end nf-core Nextflow pipeline for antibody optimization. Takes PDB structure files as input
-and produces redesigned, structurally verified, and humanized antibody sequences with humanness scores.
+End-to-end nf-core Nextflow pipeline for antibody optimization. Takes FASTA sequences as input
+and produces redesigned, structurally verified, and humanized antibody structures (PDB) with humanness scores.
 
 The pipeline is composed of four modules that connect into a single end-to-end workflow:
 AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
@@ -40,22 +40,22 @@ AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
 | Containers | Docker (primary) |
 | Module testing | nf-test |
 | Linting / validation | nf-core lint, nf-core schema lint |
-| Input format | PDB structure files via samplesheet CSV |
+| Input format | FASTA sequences via samplesheet CSV |
 
 ### Pipeline Stage Order
 
 ```
-PDB input
+FASTA input
    ↓
 AntiFold          — CDR redesign
    ↓
-ABodyBuilder2     — structural verification of redesigned sequences
+ABodyBuilder2     — structure prediction → PDB
    ↓
 BioPhi Sapiens    — humanization scoring and redesign
    ↓
 OASis             — humanness scoring against observed antibody space
    ↓
-results/
+results/ (PDB + scores)
 ```
 
 ### Channel Contract
@@ -64,8 +64,9 @@ Preserve these channel shapes at module boundaries:
 
 | Boundary | Channel shape |
 |---|---|
+| Input → AntiFold | `tuple val(meta), path(fasta)` |
 | AntiFold → ABodyBuilder2 | `tuple val(meta), path(redesigned_fasta)` |
-| ABodyBuilder2 → BioPhi | `tuple val(meta), path(verified_pdb)` |
+| ABodyBuilder2 → BioPhi | `tuple val(meta), path(predicted_pdb)` |
 | BioPhi → OASis | `tuple val(meta), path(humanized_fasta)` |
 
 The `meta` map MUST contain at minimum: `id`, `sample`, `chain_heavy`, `chain_light`.
@@ -96,11 +97,11 @@ nf-test test <path/to/tests/>
 
 ## Input Format
 
-Primary input: PDB structure files via a samplesheet CSV passed to `--input`:
+Primary input: FASTA sequence files via a samplesheet CSV passed to `--input`:
 
 ```csv
-sample,pdb,chain_heavy,chain_light
-Ab001,/path/to/Ab001.pdb,H,L
+sample,fasta,chain_heavy,chain_light
+Ab001,/path/to/Ab001.fasta,H,L
 ```
 
 ---
