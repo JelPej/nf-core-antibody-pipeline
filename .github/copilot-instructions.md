@@ -28,12 +28,8 @@ Agents MUST follow these rules unless a user explicitly overrides them in the cu
 End-to-end nf-core Nextflow pipeline for antibody optimization. Takes PDB structure files as input
 and produces redesigned, structurally verified, and humanized antibody sequences with humanness scores.
 
-The pipeline is developed collaboratively across two groups:
-
-- **Group 2a:** AntiFold (CDR redesign) → BioPhi Sapiens (humanization)
-- **Group 2b:** ABodyBuilder2 (structural verification) → OASis (humanness scoring)
-
-The four modules connect into a single end-to-end workflow.
+The pipeline is composed of four modules that connect into a single end-to-end workflow:
+AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
 
 ### Core Stack
 
@@ -51,20 +47,20 @@ The four modules connect into a single end-to-end workflow.
 ```
 PDB input
    ↓
-AntiFold          — CDR redesign (Group 2a)
+AntiFold          — CDR redesign
    ↓
-ABodyBuilder2     — structural verification of redesigned sequences (Group 2b)
+ABodyBuilder2     — structural verification of redesigned sequences
    ↓
-BioPhi Sapiens    — humanization scoring and redesign (Group 2a)
+BioPhi Sapiens    — humanization scoring and redesign
    ↓
-OASis             — humanness scoring against observed antibody space (Group 2b)
+OASis             — humanness scoring against observed antibody space
    ↓
 results/
 ```
 
-### Cross-Group Channel Contract
+### Channel Contract
 
-Both groups MUST agree on and preserve these channel shapes at integration boundaries:
+Preserve these channel shapes at module boundaries:
 
 | Boundary | Channel shape |
 |---|---|
@@ -73,7 +69,7 @@ Both groups MUST agree on and preserve these channel shapes at integration bound
 | BioPhi → OASis | `tuple val(meta), path(humanized_fasta)` |
 
 The `meta` map MUST contain at minimum: `id`, `sample`, `chain_heavy`, `chain_light`.
-Do not add meta fields without coordinating with both groups.
+Do not add meta fields without updating all affected modules.
 
 ---
 
@@ -176,7 +172,7 @@ Ab001,/path/to/Ab001.pdb,H,L
 
 - Keep diffs small and single-purpose.
 - Avoid unrelated edits in the same commit.
-- Do not modify the cross-group channel contract without coordinating with both groups.
+- Do not modify the channel contract without updating all affected modules.
 
 ### Conventional Commits
 
