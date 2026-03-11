@@ -129,7 +129,7 @@ These paths are pre-staged on the host and must be mounted into containers where
 
 | Data | Host path | Notes |
 |---|---|---|
-| Test PDB | `/data/pdb/6y1l.pdb` | SAbDab entry, IMGT-numbered |
+| Test PDB | `/data/antifold/pdbs/6y1l_imgt.pdb` | SAbDab entry, IMGT-numbered |
 | OASis database | `/data/oasis/OASis_9mers_v1.db` | ~22 GB; mount read-only into OASis container |
 
 ---
