@@ -10,7 +10,7 @@
 include { RUN_ALPHAFOLD2      } from '../modules/local/run_alphafold2'
 include { RUN_ALPHAFOLD2_MSA  } from '../modules/local/run_alphafold2_msa'
 include { RUN_ALPHAFOLD2_PRED } from '../modules/local/run_alphafold2_pred'
-
+include { USALIGN } from '../modules/local/usalign'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT NF-CORE MODULES/SUBWORKFLOWS
@@ -98,6 +98,15 @@ workflow ALPHAFOLD2 {
         ch_msa            = ch_msa.mix(RUN_ALPHAFOLD2.out.msa)
         ch_pae            = ch_pae.mix(RUN_ALPHAFOLD2.out.pae)
         ch_versions       = ch_versions.mix(RUN_ALPHAFOLD2.out.versions)
+
+        // ch_alphafold_pdb =  RUN_ALPHAFOLD2.out.top_ranked_pdb.collect()
+
+        // ch_alphafold_pdb.view()
+        ch_alphafold_pdb = channel.fromPath([
+            '/home/ubuntu/andrej/proteinfold/assets/T1024.pdb',
+            '/home/ubuntu/andrej/proteinfold/assets/T1026.pdb'
+        ]).collect()
+        USALIGN(ch_alphafold_pdb)
 
     } else if (alphafold2_mode == 'split_msa_prediction') {
         //
