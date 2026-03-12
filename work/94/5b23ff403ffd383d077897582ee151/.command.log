@@ -1,21 +1,0 @@
-      __     ____  _       ____  _     _     ____              _                
-  /| /  \   | __ )(_) ___ |  _ \| |__ (_)   / ___|  __ _ _ __ (_) ___ _ __  ___ 
- ( || [] )  |  _ \| |/ _ \| |_) | '_ \| |   \___ \ / _` | '_ \| |/ _ \ '_ \/ __|
-  \_   _/   | |_) | | (_) |  __/| | | | |    ___| | |_| | |_| | |  __/ | | \__ \
-    | |     |____/|_|\___/|_|   |_| |_|_|   |____/ \__,_|  __/|_|\___|_| |_|___/
-    |_|                    version 1.0.11               |_|                    
-─────────────────────────────────────────────────────────────────────────────────
-
-Settings:
-- Predicting using Sapiens model: latest
-- Numbering scheme: kabat
-- CDR definition: kabat
-
-- Ignoring mutations in CDR regions
-- Humanizing using 1 iteration
-
-0it [00:00, ?it/s]2it [00:00, 27.10it/s]
-Writing FASTA to file: value1_humanized.fasta
-  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  1.21it/s]100%|██████████| 2/2 [00:01<00:00,  1.85it/s]100%|██████████| 2/2 [00:01<00:00,  1.71it/s]
-Saved 2 humanized chains to: value1_humanized.fasta
-Done.
