@@ -2,11 +2,11 @@ process OASIS {
     tag "$meta.id"
     label 'process_low'
 
-    container 'howlinman/biophi-oasis:latest'
+    container 'howlinman/biophi-oasis:1.0.0'
 
     input:
     tuple val(meta), path(humanized_fasta)
-    path oasis_db
+    val oasis_db
 
     output:
     tuple val(meta), path("*_oasis_scores.xlsx"), emit: scores
