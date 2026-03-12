@@ -2,7 +2,7 @@ process BIOPHI_SAPIENS {
     tag "$meta.id"
     label 'process_low'
 
-    container 'docker.io/biophi/biophi-oasis:latest'
+    container 'community.wave.seqera.io/library/biophi:1.0.11--591744abb77f706b'
 
     input:
     tuple val(meta), path(fasta)
