@@ -132,7 +132,8 @@ workflow NFCORE_PROTEINFOLD {
             PREPARE_ALPHAFOLD2_DBS.out.uniref30,
             PREPARE_ALPHAFOLD2_DBS.out.uniref90,
             PREPARE_ALPHAFOLD2_DBS.out.pdb_seqres,
-            PREPARE_ALPHAFOLD2_DBS.out.uniprot
+            PREPARE_ALPHAFOLD2_DBS.out.uniprot,
+            params.reference_pdb
         )
         ch_multiqc          = ch_multiqc.mix(ALPHAFOLD2.out.multiqc_report.collect())
         ch_versions         = ch_versions.mix(ALPHAFOLD2.out.versions)

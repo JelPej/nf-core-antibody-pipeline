@@ -43,6 +43,7 @@ workflow ALPHAFOLD2 {
     ch_uniref90             // channel: path(uniref90)
     ch_pdb_seqres           // channel: path(pdb_seqres)
     ch_uniprot              // channel: path(uniprot)
+    reference_pdb
 
     main:
     ch_pdb            = channel.empty()
@@ -98,15 +99,6 @@ workflow ALPHAFOLD2 {
         ch_msa            = ch_msa.mix(RUN_ALPHAFOLD2.out.msa)
         ch_pae            = ch_pae.mix(RUN_ALPHAFOLD2.out.pae)
         ch_versions       = ch_versions.mix(RUN_ALPHAFOLD2.out.versions)
-
-        // ch_alphafold_pdb =  RUN_ALPHAFOLD2.out.top_ranked_pdb.collect()
-
-        // ch_alphafold_pdb.view()
-        ch_alphafold_pdb = channel.fromPath([
-            '/home/ubuntu/andrej/proteinfold/assets/T1024.pdb',
-            '/home/ubuntu/andrej/proteinfold/assets/T1026.pdb'
-        ]).collect()
-        USALIGN(ch_alphafold_pdb)
 
     } else if (alphafold2_mode == 'split_msa_prediction') {
         //
@@ -167,6 +159,47 @@ workflow ALPHAFOLD2 {
         ch_msa            = ch_msa.mix(RUN_ALPHAFOLD2_PRED.out.msa)
         ch_pae            = ch_pae.mix(RUN_ALPHAFOLD2_PRED.out.pae)
         ch_versions       = ch_versions.mix(RUN_ALPHAFOLD2_PRED.out.versions)
+    }else if(alphafold2_mode == "usalign"){
+                //
+        // SUBWORKFLOW: Run Alphafold2 standard mode, US-align alignment 
+        //
+        RUN_ALPHAFOLD2 (
+            ch_samplesheet,
+            alphafold2_full_dbs,
+            alphafold2_model_preset,
+            uniref30_prefix,
+            ch_alphafold2_params,
+            ch_bfd,
+            ch_small_bfd,
+            ch_mgnify,
+            ch_pdb70,
+            ch_pdb_mmcif,
+            ch_pdb_obsolete,
+            ch_uniref30,
+            ch_uniref90,
+            ch_pdb_seqres,
+            ch_uniprot
+        )
+
+        RUN_ALPHAFOLD2
+            .out
+            .multiqc
+            .map { it -> it[1] }
+            .toSortedList()
+            .map { it ->
+                [ [ "model": "alphafold2" ], it.flatten() ]
+            }
+            .set { ch_multiqc_report }
+
+        ch_pdb            = ch_pdb.mix(RUN_ALPHAFOLD2.out.pdb)
+        ch_top_ranked_pdb = ch_top_ranked_pdb.mix(RUN_ALPHAFOLD2.out.top_ranked_pdb)
+        ch_msa            = ch_msa.mix(RUN_ALPHAFOLD2.out.msa)
+        ch_pae            = ch_pae.mix(RUN_ALPHAFOLD2.out.pae)
+        ch_versions       = ch_versions.mix(RUN_ALPHAFOLD2.out.versions)
+
+        ch_usalign_input =RUN_ALPHAFOLD2.out.top_ranked_pdb.map{row -> [row[0],row[1],reference_pdb]}.view()
+
+        USALIGN(ch_usalign_input)
     }
 
     ch_pdb

@@ -31,7 +31,7 @@ process USALIGN {
     //               https://github.com/nf-core/modules/blob/master/modules/nf-core/bwa/index/main.nf
     // TODO nf-core: Where applicable please provide/convert compressed files as input/output
     //               e.g. "*.fastq.gz" and NOT "*.fastq", "*.bam" and NOT "*.sam" etc.
-    tuple path(inputpdb), path(reference)
+    tuple val(meta), path (inputpdb) , path(reference)
 
 
     output:
@@ -47,8 +47,6 @@ process USALIGN {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
-    
     // TODO nf-core: Where possible, a command MUST be provided to obtain the version number of the software e.g. 1.10
     //               If the software is unable to output a version number on the command-line then it can be manually specified
     //               e.g. https://github.com/nf-core/modules/blob/master/modules/nf-core/homer/annotatepeaks/main.nf

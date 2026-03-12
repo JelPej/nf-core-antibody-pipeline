@@ -124,7 +124,7 @@
                     "type": "string",
                     "default": "split_msa_prediction",
                     "description": "Specifies the mode in which AlphaFold2 will be run",
-                    "enum": ["standard", "split_msa_prediction"],
+                    "enum": ["standard", "split_msa_prediction", "usalign"],
                     "fa_icon": "fas fa-exchange-alt"
                 },
                 "alphafold2_model_preset": {
