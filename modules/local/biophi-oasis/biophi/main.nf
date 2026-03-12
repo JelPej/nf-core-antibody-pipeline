@@ -41,11 +41,3 @@ process BIOPHI_SAPIENS {
     END_VERSIONS
     """
 }
-
-workflow {
-    def input = Channel.of(
-        tuple([id:"value1"], file("/home/ubuntu/oliver/nf-core-antibody-pipeline/modules/local/biophi-oasis/biophi/tests/test_input.fasta"))
-    )
-
-    BIOPHI_SAPIENS(input)
-}
