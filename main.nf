@@ -42,19 +42,24 @@ params.fasta = getGenomeAttribute('fasta')
 //
 workflow NFCORE_ANTIBODYOPTIMIZATION {
 
-    take:
-    samplesheet // channel: samplesheet read in from --input
+    //take:
+    //samplesheet // channel: samplesheet read in from --input
 
     main:
 
+    ch_versions = channel.empty()
+
+    ch_samplesheet = channel.value(file(params.input, checkIfExists: true))
     //
     // WORKFLOW: Run pipeline
     //
     ANTIBODYOPTIMIZATION (
-        samplesheet
+        ch_samplesheet
     )
     emit:
     multiqc_report = ANTIBODYOPTIMIZATION.out.multiqc_report // channel: /path/to/multiqc_report.html
+    ch_versions = ch_versions.mix(ANTIBODYOPTIMIZATION.out.versions)
+
 }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,9 +88,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    NFCORE_ANTIBODYOPTIMIZATION (
-        PIPELINE_INITIALISATION.out.samplesheet
-    )
+    NFCORE_ANTIBODYOPTIMIZATION ()
     //
     // SUBWORKFLOW: Run completion tasks
     //
