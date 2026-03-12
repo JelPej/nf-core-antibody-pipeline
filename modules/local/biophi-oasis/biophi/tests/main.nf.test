@@ -1,0 +1,49 @@
+nextflow_process {
+
+    name "Test Process BIOPHI_SAPIENS"
+    script "../main.nf"
+    process "BIOPHI_SAPIENS"
+    config "./nextflow.config"
+
+    test("Should humanize antibody VH and VL sequences") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'test_antibody' ],
+                    file("${projectDir}/modules/local/biophi-oasis/biophi/tests/test_input.fasta")
+                ]
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.humanized.size() == 1
+            assert process.out.versions != null
+        }
+    }
+
+    test("Should run with stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'test_antibody' ],
+                    file("${projectDir}/modules/local/biophi-oasis/biophi/tests/test_input.fasta")
+                ]
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.humanized.size() == 1
+            assert process.out.versions != null
+        }
+    }
+}

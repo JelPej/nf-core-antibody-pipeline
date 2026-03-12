@@ -1,0 +1,8 @@
+Mar-12 11:36:41.915 [main] INFO  com.askimed.nf.test.App - nf-test 0.9.4
+Mar-12 11:36:41.928 [main] INFO  com.askimed.nf.test.App - Arguments: [test, modules/local/biophi-oasis/biophi/tests/main.nf.test, --profile, docker]
+Mar-12 11:36:42.803 [main] INFO  com.askimed.nf.test.App - Nextflow Version: 25.10.4
+Mar-12 11:36:42.807 [main] WARN  com.askimed.nf.test.commands.RunTestsCommand - No nf-test config file found.
+Mar-12 11:36:42.812 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Loaded 0 files from directory /home/ubuntu/oliver/nf-core-antibody-pipeline/modules/nf-core/biophi-oasis in 0.003 sec
+Mar-12 11:36:42.813 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Found 0 files containing tests.
+Mar-12 11:36:42.813 [main] DEBUG com.askimed.nf.test.lang.dependencies.DependencyResolver - Found files: []
+Mar-12 11:36:42.815 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Found 0 tests to execute.

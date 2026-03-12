@@ -1,0 +1,2 @@
+task_id	hash	native_id	name	status	exit	submit	duration	realtime	%cpu	peak_rss	peak_vmem	rchar	wchar
+1	84/4eb1b8	111830	BIOPHI_SAPIENS (test_antibody)	COMPLETED	0	2026-03-12 12:38:03.090	525ms	6ms	66.7%	0	0	70.9 KB	275 B

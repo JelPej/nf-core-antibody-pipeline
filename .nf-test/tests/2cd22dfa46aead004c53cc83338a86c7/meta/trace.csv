@@ -1,0 +1,2 @@
+task_id	hash	native_id	name	status	exit	submit	duration	realtime	%cpu	peak_rss	peak_vmem	rchar	wchar
+1	5c/b4fed1	111258	BIOPHI_SAPIENS (test_antibody)	FAILED	1	2026-03-12 12:37:53.425	4.2s	4.1s	-	-	-	-	-

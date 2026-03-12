@@ -1,4 +1,8 @@
 FROM mambaorg/micromamba:1.5.8
+
+USER root
+RUN apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*
+
 RUN micromamba create -y -n biophi-env -c conda-forge -c bioconda \
     python=3.9 \
     abnumber \

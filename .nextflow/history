@@ -1,0 +1,5 @@
+2026-03-12 12:41:19	2.1s	friendly_goodall	ERR	a4769376d2fcb10e2c4f77716128298c	e0a35d47-5885-4555-a98a-be477b2a2616	nextflow run modules/local/biophi-oasis/biophi/main.nf -with-docker 'docker.io/biophi/biophi-oasis:latest'
+2026-03-12 12:41:54	-	serene_varahamihira	-	2f2e005f75fcb04fa3087a79e7fcea3d	91bbcb38-8d79-494a-8abb-09d626e516c9	nextflow run modules/local/biophi-oasis/biophi/main.nf -with-docker 'docker.io/biophi/biophi-oasis:latest'
+2026-03-12 12:44:09	2.2s	elegant_mayer	ERR	a27867d703eeb0b3b08c85f05ae61fb2	7c9ef909-c121-4e92-9ee3-af6e18fa3214	nextflow run modules/local/biophi-oasis/biophi/main.nf -with-docker 'docker.io/biophi/biophi-oasis:latest'
+2026-03-12 12:45:00	2.4s	dreamy_legentil	ERR	17621d01805deb177acbf0025ca013b1	5b355ca3-1b6f-4db4-ab3a-49189919ebfb	nextflow run modules/local/biophi-oasis/biophi/main.nf -with-docker 'docker.io/biophi/biophi-oasis:latest'
+2026-03-12 12:45:31	11.6s	compassionate_faraday	OK	fa48fafcfc5663f20ead2e4d4e3249d5	df0e85b5-fe20-489c-8608-fc08f63464a3	nextflow run modules/local/biophi-oasis/biophi/main.nf -with-docker 'docker.io/biophi/biophi-oasis:latest'

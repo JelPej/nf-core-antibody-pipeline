@@ -1,0 +1,50 @@
+name: biophi_sapiens
+description: Humanize antibody sequences using the BioPhi Sapiens deep learning method
+keywords:
+  - antibody
+  - humanization
+  - biophi
+  - sapiens
+  - therapeutic
+
+tools:
+  - biophi:
+      description: >
+        Open-source antibody humanization and humanness evaluation platform.
+        Sapiens uses a deep learning language model trained on human antibody repertoires.
+      homepage: https://github.com/Merck/BioPhi
+      documentation: https://github.com/Merck/BioPhi
+      licence: ["MIT"]
+
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information.
+          e.g. [ id:'sample1' ]
+    - fasta:
+        type: file
+        description: |
+          FASTA file containing antibody sequences from ABodyBuilder2.
+          Heavy and light chains should share the same sequence ID,
+          optionally with _VH/_VL or _HC/_LC suffixes.
+        pattern: "*.{fa,fasta}"
+
+output:
+  - humanized:
+      - meta:
+          type: map
+          description: Groovy Map containing sample information
+      - "*.fasta":
+          type: file
+          description: Humanized antibody sequences in FASTA format
+          pattern: "*_humanized.fasta"
+  - versions:
+      - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+
+authors:
+  - "@TheeOliver"
+  - "@sofiatqsevskaa"
