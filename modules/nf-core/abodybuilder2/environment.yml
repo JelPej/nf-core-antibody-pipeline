@@ -1,0 +1,10 @@
+channels:
+- conda-forge
+- bioconda
+dependencies:
+- bioconda::anarci=2024.05.21
+- conda-forge::openmm=8.4.0
+- conda-forge::pdbfixer=1.12
+- pip
+- pip:
+  - immunebuilder==1.2

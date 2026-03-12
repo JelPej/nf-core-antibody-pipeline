@@ -1,4 +1,4 @@
-.venv/
+ .venv/
 work/
 .nextflow*
 .nextflow.log
@@ -6,5 +6,9 @@ work/
 .nextflow.history
 CLAUDE.MD
 null/
-*.html
-*.txt
+/results/**
+/null/**
+.nextflow/**
+**/.nf-test.log
+**/.nf-test/**
+CLAUDE.MD
