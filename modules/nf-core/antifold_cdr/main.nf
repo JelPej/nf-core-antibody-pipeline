@@ -1,37 +1,63 @@
-nextflow.enable.dsl=2
-
-process ANTIFOLD_CDR 
+process ANTIFOLD_CDR
 {
     tag "${meta.id}"
     label 'process_medium'
-    // container 'quay.io/avitanov/antifold:0.3.1'
 
+    container 'quay.io/avitanov/antifold:0.3.1'
+
+    // stageAs: "dir/" is required: antifold uses os.path.dirname(pdb_file) to resolve pdb_dir.
+    // Without a parent directory, dirname returns "" which produces an invalid absolute path "/name.pdb".
     input:
-    tuple val(meta), path(pdb, stageAs: 'dir/')
+    tuple val(meta), path(pdb, stageAs: "dir/")
 
     output:
-    tuple val(meta), path("${meta.id}.fasta"), emit: fasta
-    tuple val(meta), path("${meta.id}.csv"),   emit: logits
+    tuple val(meta), path("*.fasta"), optional: true,  emit: fasta
+    tuple val(meta), path("*.csv"),   emit: logits
     path "versions.yml",                       emit: versions
 
     script:
-    def numSeq  = task.ext.num_seq_per_target ?: 50
-    def regions = task.ext.regions            ?: "CDR1 CDR2 CDR3"
-    def temp    = task.ext.sampling_temp      ?: "0.2"
-    def heavy   = task.ext.heavy_chain        ?: "H"
-    def light   = task.ext.light_chain        ?: "L"
+    // Chains come from meta (populated by samplesheet)
+    def heavy = meta.chain_heavy ?: "H"
+    def light = meta.chain_light ?: "L"
+
+    // All other args only added when explicitly set via task.ext (antifold defaults apply otherwise)
+    def args = [
+        task.ext.num_seq_per_target != null ? "--num_seq_per_target ${task.ext.num_seq_per_target}" : "",
+        task.ext.sampling_temp      != null ? "--sampling_temp \"${task.ext.sampling_temp}\""       : "",
+        task.ext.regions            != null ? "--regions \"${task.ext.regions}\""                   : "",
+        task.ext.antigen_chain      != null ? "--antigen_chain ${task.ext.antigen_chain}"           : "",
+        task.ext.nanobody_chain     != null ? "--nanobody_chain ${task.ext.nanobody_chain}"         : "",
+        task.ext.batch_size         != null ? "--batch_size ${task.ext.batch_size}"                 : "",
+        task.ext.num_threads        != null ? "--num_threads ${task.ext.num_threads}"               : "",
+        task.ext.seed               != null ? "--seed ${task.ext.seed}"                             : "",
+        task.ext.verbose            != null ? "--verbose ${task.ext.verbose}"                       : "",
+        task.ext.model_path         != null ? "--model_path ${task.ext.model_path}"                 : "",
+        task.ext.limit_variation    ? "--limit_variation"    : "",
+        task.ext.extract_embeddings ? "--extract_embeddings" : "",
+        task.ext.custom_chain_mode  ? "--custom_chain_mode"  : "",
+        task.ext.exclude_heavy      ? "--exclude_heavy"      : "",
+        task.ext.exclude_light      ? "--exclude_light"      : "",
+        task.ext.esm_if1_mode       ? "--esm_if1_mode"       : "",
+    ].findAll { it }.join(" \\\n        ")
 
     """
-    set -euo pipefail
+    python3 -m antifold.main \\
+        --pdb_file ${pdb} \\
+        --out_dir . \\
+        --heavy_chain ${heavy} \\
+        --light_chain ${light} \\
+        ${args}
 
-    python -m antifold.main --pdb_file ${pdb} --out_dir .
-
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        antifold: \$(python3 -c "from importlib.metadata import version; print(version('antifold'))")
+    END_VERSIONS
     """
 }
 
 workflow {
     Channel
-        .fromPath('/data/pdb/6y1l_imgt.pdb')
+        .fromPath('/data/pdb/6y1l_imgt.pdb')          // adjust to your test PDB path
         .map { pdb -> tuple([ id: 'test_antifold' ], pdb) }
         | ANTIFOLD_CDR
 }

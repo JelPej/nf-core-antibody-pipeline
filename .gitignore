@@ -6,3 +6,5 @@ work/
 .nextflow.history
 CLAUDE.MD
 null/
+*.html
+*.txt
