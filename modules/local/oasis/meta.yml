@@ -25,9 +25,10 @@ input:
         BioPhi Sapiens module.
       pattern: "*.{fa,fasta}"
   - oasis_db:
-      type: string
-      description: Path to the OASis 9-mer SQLite database (~22 GB). Must be bind-mounted
-        read-only into the container at the same path (e.g. /data/oasis/OASis_9mers_v1.db).
+      type: file
+      description: OASis 9-mer SQLite database (~22 GB). Pre-staged at /data/oasis/OASis_9mers_v1.db
+        and bind-mounted read-only into the container.
+      pattern: "*.db"
 output:
   scores:
     - "*_oasis_scores.xlsx":

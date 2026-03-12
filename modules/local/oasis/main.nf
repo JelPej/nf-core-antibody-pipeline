@@ -6,7 +6,7 @@ process OASIS {
 
     input:
     tuple val(meta), path(humanized_fasta)
-    val oasis_db
+    path oasis_db
 
     output:
     tuple val(meta), path("*_oasis_scores.xlsx"), emit: scores
