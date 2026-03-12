@@ -1,5 +1,9 @@
 FROM mambaorg/micromamba:1.5.8
 
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends procps && rm -rf /var/lib/apt/lists/*
+USER $MAMBA_USER
+
 # Create environment with BioPhi (+ OASis) installed
 RUN micromamba create -y -n biophi-env -c conda-forge -c bioconda biophi python=3.9 && \
     micromamba clean -a -y

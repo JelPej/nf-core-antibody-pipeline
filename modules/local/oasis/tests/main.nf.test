@@ -22,7 +22,7 @@ nextflow_process {
                     [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
                     file("${projectDir}/modules/local/oasis/tests/fixtures/test_humanized.fa", checkIfExists: true)
                 ]
-                input[1] = file("${projectDir}/modules/local/oasis/tests/fixtures/test_humanized.fa")
+                input[1] = file("${projectDir}/modules/local/oasis/tests/fixtures/dummy.db")
                 """
             }
         }
