@@ -1,2 +1,0 @@
-task_id	hash	native_id	name	status	exit	submit	duration	realtime	%cpu	peak_rss	peak_vmem	rchar	wchar
-1	94/5b23ff	114063	BIOPHI_SAPIENS (value1)	COMPLETED	0	2026-03-12 12:45:32.582	9.2s	8.7s	111.2%	719.5 MB	6.6 GB	257.8 MB	4.5 MB
