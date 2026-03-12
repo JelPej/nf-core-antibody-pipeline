@@ -6,7 +6,7 @@ nextflow_process {
     tag "modules_nfcore"
     tag "abodybuilder2"
 
-    test("Test ABODYBUILDER2 - success") {
+    test("Test ABODYBUILDER2") {
         when {
             process {
                 """

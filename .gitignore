@@ -6,3 +6,9 @@ work/
 .nextflow.history
 CLAUDE.MD
 null/
+/results/**
+/null/**
+.nextflow/**
+**/.nf-test.log
+**/.nf-test/**
+CLAUDE.MD
