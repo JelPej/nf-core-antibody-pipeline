@@ -13,19 +13,35 @@ process ANTIFOLD_CDR
     tuple val(meta), path(pdb, stageAs: "dir/")
 
     output:
-    tuple val(meta), path("*.fasta", optional: true), emit: fasta
+    tuple val(meta), path("*.fasta"), optional: true,  emit: fasta
     tuple val(meta), path("*.csv"),   emit: logits
     path "versions.yml",                       emit: versions
 
     script:
-    def numSeq  = task.ext.num_seq_per_target ?: 5
-    def regions = task.ext.regions            ?: "CDR1 CDR2 CDR3"
-    def temp    = task.ext.sampling_temp      ?: "0.2"
-    def heavy   = meta.chain_heavy            ?: "H"
-    def light   = meta.chain_light            ?: "L"
-    def pdbStem = pdb.baseName
+    // Chains come from meta (populated by samplesheet)
+    def heavy = meta.chain_heavy ?: "H"
+    def light = meta.chain_light ?: "L"
 
-    // # AntiFold names outputs as {pdb_stem}_{chains}.{ext} — rename to meta.id
+    // All other args only added when explicitly set via task.ext (antifold defaults apply otherwise)
+    def args = [
+        task.ext.num_seq_per_target != null ? "--num_seq_per_target ${task.ext.num_seq_per_target}" : "",
+        task.ext.sampling_temp      != null ? "--sampling_temp \"${task.ext.sampling_temp}\""       : "",
+        task.ext.regions            != null ? "--regions \"${task.ext.regions}\""                   : "",
+        task.ext.antigen_chain      != null ? "--antigen_chain ${task.ext.antigen_chain}"           : "",
+        task.ext.nanobody_chain     != null ? "--nanobody_chain ${task.ext.nanobody_chain}"         : "",
+        task.ext.batch_size         != null ? "--batch_size ${task.ext.batch_size}"                 : "",
+        task.ext.num_threads        != null ? "--num_threads ${task.ext.num_threads}"               : "",
+        task.ext.seed               != null ? "--seed ${task.ext.seed}"                             : "",
+        task.ext.verbose            != null ? "--verbose ${task.ext.verbose}"                       : "",
+        task.ext.model_path         != null ? "--model_path ${task.ext.model_path}"                 : "",
+        task.ext.limit_variation    ? "--limit_variation"    : "",
+        task.ext.extract_embeddings ? "--extract_embeddings" : "",
+        task.ext.custom_chain_mode  ? "--custom_chain_mode"  : "",
+        task.ext.exclude_heavy      ? "--exclude_heavy"      : "",
+        task.ext.exclude_light      ? "--exclude_light"      : "",
+        task.ext.esm_if1_mode       ? "--esm_if1_mode"       : "",
+    ].findAll { it }.join(" \\\n        ")
+
     """
     set -euo pipefail
 
@@ -34,13 +50,11 @@ process ANTIFOLD_CDR
         --out_dir . \\
         --heavy_chain ${heavy} \\
         --light_chain ${light} \\
-        --num_seq_per_target ${numSeq} \\
-        --sampling_temp "${temp}" \\
-        --regions "${regions}"
+        ${args}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        antifold: \$(python3 -c "import antifold; print(antifold.__version__)")
+        antifold: \$(python3 -c "from importlib.metadata import version; print(version('antifold'))")
     END_VERSIONS
     """
 }
