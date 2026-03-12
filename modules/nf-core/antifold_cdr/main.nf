@@ -1,12 +1,13 @@
 nextflow.enable.dsl=2
 
-process ANTIFOLD_CDR {
+process ANTIFOLD_CDR 
+{
     tag "${meta.id}"
     label 'process_medium'
-    container 'https://wave.seqera.io/view/builds/bd-2d39fa84a931b114_2?_gl=1*dovd6r*_gcl_au*OTY3NDI4Njg3LjE3Njg4Mjg4NDQ'
+    // container 'quay.io/avitanov/antifold:0.3.1'
 
     input:
-    tuple val(meta), path(pdb)
+    tuple val(meta), path(pdb, stageAs: 'dir/')
 
     output:
     tuple val(meta), path("${meta.id}.fasta"), emit: fasta
@@ -23,8 +24,6 @@ process ANTIFOLD_CDR {
     """
     set -euo pipefail
 
-    export PYTHONPATH=/usr/local/lib/python3.10/site-packages:${PYTHONPATH:-}
-
     python -m antifold.main --pdb_file ${pdb} --out_dir .
 
     """
@@ -32,7 +31,7 @@ process ANTIFOLD_CDR {
 
 workflow {
     Channel
-        .fromPath('data/6y1l_imgt.pdb')          // adjust to your test PDB path
+        .fromPath('/data/pdb/6y1l_imgt.pdb')
         .map { pdb -> tuple([ id: 'test_antifold' ], pdb) }
         | ANTIFOLD_CDR
 }
