@@ -1,1 +1,6 @@
 .venv/
+work/
+.nextflow*
+.nextflow.log
+.nextflow.log.*
+.nextflow.history
