@@ -9,6 +9,9 @@ include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pi
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_antibodyoptimization_pipeline'
 include { BIOPHI_SAPIENS } from '../modules/local/biophi-oasis/biophi/main'
+include { ABODYBUILDER2  } from '../modules/nf-core/abodybuilder2'
+include { ANTIFOLD_CDR  } from '../modules/nf-core/antifold_cdr'
+
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
