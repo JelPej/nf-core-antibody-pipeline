@@ -1,5 +1,3 @@
-nextflow.enable.dsl=2
-
 process ANTIFOLD_CDR
 {
     tag "${meta.id}"
@@ -43,8 +41,6 @@ process ANTIFOLD_CDR
     ].findAll { it }.join(" \\\n        ")
 
     """
-    set -euo pipefail
-
     python3 -m antifold.main \\
         --pdb_file ${pdb} \\
         --out_dir . \\
