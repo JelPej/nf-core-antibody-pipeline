@@ -4,3 +4,5 @@ work/
 .nextflow.log
 .nextflow.log.*
 .nextflow.history
+CLAUDE.MD
+null/
