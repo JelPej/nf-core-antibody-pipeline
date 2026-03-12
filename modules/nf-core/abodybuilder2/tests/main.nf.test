@@ -1,0 +1,52 @@
+nextflow_process {
+    name "Test Process ABODYBUILDER2"
+    script "../main.nf"
+    process "ABODYBUILDER2"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "abodybuilder2"
+
+    test("Test ABODYBUILDER2 - success") {
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'test_ab', sample: 'test_ab', chain_heavy: 'H', chain_light: 'L' ],
+                    file("$projectDir/assets/test_abody_2.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.pdb.size() == 1 },
+                { assert process.out.pdb[0][1].endsWith('.pdb') },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Stub test - runs fast without the container/weights
+    test("Test ABODYBUILDER2 - stub") {
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'test_ab', sample: 'test_ab', chain_heavy: 'H', chain_light: 'L' ],
+                    file("$projectDir/assets/test_abody_2.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.pdb.size() == 1 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+}
