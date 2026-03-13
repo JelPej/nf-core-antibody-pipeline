@@ -12,6 +12,7 @@ include { ANTIFOLD_CDR           } from '../modules/local/antifold_cdr/main'
 include { ANTIFOLD_SPLIT         } from '../modules/local/antifold_split/main'
 include { BIOPHI_SAPIENS         } from '../modules/local/biophi/main'
 include { FILTER_BIOPHI          } from '../modules/local/filter_biophi/main'
+include { BIOPHI_SPLIT           } from '../modules/local/biophi_split/main'
 
 
 /*
@@ -56,6 +57,12 @@ workflow ANTIBODYOPTIMIZATION {
 
     FILTER_BIOPHI(ch_biophi_for_filter)
     ch_versions = ch_versions.mix(FILTER_BIOPHI.out.versions)
+
+    //
+    // STEP 5: Clean filtered FASTA for ABodyBuilder2 input (rename _VH→H, _VL→L)
+    //
+    BIOPHI_SPLIT(FILTER_BIOPHI.out.filtered)
+    ch_versions = ch_versions.mix(BIOPHI_SPLIT.out.versions)
 
     //
     // Collate and save software versions
