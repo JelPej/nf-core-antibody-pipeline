@@ -1,0 +1,46 @@
+name: oasis
+description: Score antibody sequences for humanness using OASis (Observed Antibody Space).
+  Queries 9-mer peptides against the OASis SQLite database and reports per-sequence
+  humanness identity scores.
+keywords:
+  - antibody
+  - humanness
+  - OASis
+  - BioPhi
+tools:
+  - biophi:
+      description: BioPhi antibody design platform; OASis scoring evaluates humanness
+        by searching 9-mer peptides against the Observed Antibody Space database.
+      homepage: https://github.com/Merck/BioPhi
+      documentation: https://github.com/Merck/BioPhi
+      licence: ["MIT"]
+input:
+  - meta:
+      type: map
+      description: |
+        Sample metadata map. Must contain: id, sample, chain_heavy, chain_light.
+  - humanized_fasta:
+      type: file
+      description: Humanized antibody sequences in FASTA format, produced by upstream
+        BioPhi Sapiens module.
+      pattern: "*.{fa,fasta}"
+  - oasis_db:
+      type: file
+      description: OASis 9-mer SQLite database (~22 GB). Pre-staged at /data/oasis/OASis_9mers_v1.db
+        and bind-mounted read-only into the container.
+      pattern: "*.db"
+output:
+  scores:
+    - "*_oasis_scores.xlsx":
+        type: file
+        description: OASis humanness scores per antibody sequence (XLSX).
+        pattern: "*_oasis_scores.xlsx"
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+        pattern: "versions.yml"
+authors:
+  - "@crscarpinteiro"
+maintainers:
+  - "@crscarpinteiro"

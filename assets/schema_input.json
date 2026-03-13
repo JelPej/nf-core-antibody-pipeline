@@ -11,23 +11,28 @@
                 "type": "string",
                 "pattern": "^\\S+$",
                 "errorMessage": "Sample name must be provided and cannot contain spaces",
-                "meta": ["id"]
+                "meta": ["id", "sample"]
             },
-            "fastq_1": {
+            "pdb": {
                 "type": "string",
                 "format": "file-path",
                 "exists": true,
-                "pattern": "^([\\S\\s]*\\/)?[^\\s\\/]+\\.f(ast)?q\\.gz$",
-                "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+                "pattern": "^\\S+\\.pdb$",
+                "errorMessage": "PDB file must be provided, cannot contain spaces, and must have extension '.pdb'"
             },
-            "fastq_2": {
+            "chain_heavy": {
                 "type": "string",
-                "format": "file-path",
-                "exists": true,
-                "pattern": "^([\\S\\s]*\\/)?[^\\s\\/]+\\.f(ast)?q\\.gz$",
-                "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+                "pattern": "^[A-Za-z]$",
+                "errorMessage": "Heavy chain identifier must be a single letter",
+                "meta": ["chain_heavy"]
+            },
+            "chain_light": {
+                "type": "string",
+                "pattern": "^[A-Za-z]$",
+                "errorMessage": "Light chain identifier must be a single letter",
+                "meta": ["chain_light"]
             }
         },
-        "required": ["sample", "fastq_1"]
+        "required": ["sample", "pdb"]
     }
 }

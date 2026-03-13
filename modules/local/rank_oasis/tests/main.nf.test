@@ -1,0 +1,49 @@
+nextflow_process {
+
+    name "Test Process RANK_OASIS"
+    script "../main.nf"
+    process "RANK_OASIS"
+    config "./nextflow.config"
+
+    test("Should rank and filter OASis scores by percentile") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'test_antibody' ],
+                    file("${projectDir}/modules/local/rank_oasis/tests/test_oasis_scores.xlsx")
+                ]
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ranked.size() == 1
+            assert process.out.versions != null
+        }
+    }
+
+    test("Should run with stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'test_antibody' ],
+                    file("${projectDir}/modules/local/rank_oasis/tests/test_oasis_scores.xlsx")
+                ]
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ranked.size() == 1
+            assert process.out.versions != null
+        }
+    }
+}

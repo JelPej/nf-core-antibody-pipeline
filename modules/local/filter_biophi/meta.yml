@@ -1,0 +1,52 @@
+name: filter_biophi
+description: Filter BioPhi Sapiens humanized sequences by per-sequence Sapiens humanness score
+keywords:
+  - antibody
+  - humanization
+  - filtering
+  - biophi
+  - sapiens
+
+tools:
+  - python:
+      description: Python 3 standard library (csv, argparse)
+      homepage: https://www.python.org
+      documentation: https://docs.python.org
+      licence: ["PSF-2.0"]
+
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information.
+          e.g. [ id:'Ab001', sample:'Ab001', chain_heavy:'H', chain_light:'L' ]
+    - humanized_fasta:
+        type: file
+        description: Humanized antibody sequences from BIOPHI_SAPIENS
+        pattern: "*.{fa,fasta}"
+    - sapiens_scores_csv:
+        type: file
+        description: |
+          Per-sequence Sapiens humanness scores from BIOPHI_SAPIENS.
+          Must contain columns: Name, sapiens_score
+        pattern: "*.csv"
+
+output:
+  - filtered:
+      - meta:
+          type: map
+          description: Groovy Map containing sample information
+      - "*_filtered.fasta":
+          type: file
+          description: |
+            Sequences passing the Sapiens score threshold (params.sapiens_min_score, default 0.8).
+            Empty if no sequences pass.
+          pattern: "*_filtered.fasta"
+  - versions:
+      - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+
+authors:
+  - "@ccarp"

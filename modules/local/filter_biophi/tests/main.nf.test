@@ -1,0 +1,96 @@
+nextflow_process {
+
+    name "Test Process FILTER_BIOPHI"
+    script "../main.nf"
+    process "FILTER_BIOPHI"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "filter_biophi"
+
+    // Integration test: 2 of 4 sequences exceed threshold 0.8
+    test("filters sequences below sapiens threshold (default 0.8)") {
+
+        when {
+            params {
+                sapiens_min_score = 0.8
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_biophi/tests/fixtures/test_humanized.fasta", checkIfExists: true),
+                    file("${projectDir}/modules/local/filter_biophi/tests/fixtures/test_sapiens_scores.csv", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 1 },
+                { assert file(process.out.filtered[0][1]).text.count('>') == 2 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Integration test: nothing passes threshold 1.0
+    test("emits empty fasta when no sequences meet threshold (1.0)") {
+
+        when {
+            params {
+                sapiens_min_score = 1.0
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_biophi/tests/fixtures/test_humanized.fasta", checkIfExists: true),
+                    file("${projectDir}/modules/local/filter_biophi/tests/fixtures/test_sapiens_scores.csv", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 1 },
+                { assert file(process.out.filtered[0][1]).text.count('>') == 0 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Stub test — no container or script execution required
+    test("stub - should succeed") {
+
+        options "-stub"
+
+        when {
+            params {
+                sapiens_min_score = 0.8
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_biophi/tests/fixtures/test_humanized.fasta", checkIfExists: true),
+                    file("${projectDir}/modules/local/filter_biophi/tests/fixtures/test_sapiens_scores.csv", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 1 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+}

@@ -1,0 +1,30 @@
+name: antifold_cdr
+description: "AntiFold CDR redesign: generate CDR sequence candidates from IMGT-numbered antibody PDBs"
+keywords:
+  - antibody
+  - cdr
+  - design
+  - antifold
+tools:
+  - antifold:
+      description: "Inverse folding model for antibody CDR redesign"
+      homepage: "https://github.com/oxpig/AntiFold"
+      licence: ["BSD-3-Clause"]
+input:
+  - pdb:
+      type: file
+      description: "IMGT-numbered antibody PDB (VH/VL or VHH)"
+      pattern: "*.pdb"
+output:
+  - fasta:
+      type: file
+      description: "FASTA with redesigned CDR sequence candidates"
+      pattern: "*.fasta"
+  - logits:
+      type: file
+      description: "Optional CSV with residue log-likelihoods from AntiFold"
+      pattern: "*.csv"
+authors:
+  - "@your_github"
+maintainers:
+  - "@your_github"

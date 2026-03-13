@@ -239,10 +239,43 @@
                 }
             }
         }
+        },
+        "pipeline_options": {
+            "title": "Pipeline options",
+            "type": "object",
+            "description": "Parameters controlling per-stage filtering thresholds.",
+            "properties": {
+                "sapiens_min_score": {
+                    "type": "number",
+                    "default": 0.8,
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "Minimum BioPhi Sapiens humanness score to retain a candidate (0–1).",
+                    "fa_icon": "fas fa-filter"
+                },
+                "oasis_min_percentile": {
+                    "type": "number",
+                    "default": 10,
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Minimum OASis percentile to retain a candidate (0–100); candidates below this threshold are excluded from ranked output.",
+                    "fa_icon": "fas fa-filter"
+                },
+                "oasis_db": {
+                    "type": "string",
+                    "default": "/data/oasis/OASis_9mers_v1.db",
+                    "description": "Path to the OASis 9-mer SQLite database (~22 GB).",
+                    "fa_icon": "fas fa-database"
+                }
+            }
+        }
     },
     "allOf": [
         {
             "$ref": "#/$defs/input_output_options"
+        },
+        {
+            "$ref": "#/$defs/pipeline_options"
         },
         {
             "$ref": "#/$defs/reference_genome_options"

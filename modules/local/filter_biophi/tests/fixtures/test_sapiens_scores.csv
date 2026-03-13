@@ -1,0 +1,5 @@
+id,chain,sapiens_score
+seq1_VH,H,0.92
+seq2_VH,H,0.72
+seq1_VL,L,0.85
+seq2_VL,L,0.65

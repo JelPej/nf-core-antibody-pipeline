@@ -21,46 +21,60 @@
 
 ## Introduction
 
-**nf-core/antibodyoptimization** is a bioinformatics pipeline that ...
+**nf-core/antibodyoptimization** is a bioinformatics pipeline for end-to-end antibody optimization. It takes an antibody structure in PDB format as input and produces redesigned, structurally verified, and humanized antibody sequences with OASis humanness scores.
 
-<!-- TODO nf-core:
-   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the
-   major pipeline sections and the types of output it produces. You're giving an overview to someone new
-   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction
--->
+The pipeline runs the following stages in sequence:
 
-<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
-     workflows use the "tube map" design for that. See https://nf-co.re/docs/guidelines/graphic_design/workflow_diagrams#examples for examples.   -->
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+```
+PDB input
+   ↓
+AntiFold           — CDR redesign via inverse folding → redesigned FASTA candidates
+   ↓
+FILTER_ANTIFOLD    — retain candidates above CDR log-odds score threshold
+   ↓
+BioPhi Sapiens     — humanization → humanized sequences + per-sequence Sapiens scores
+   ↓
+FILTER_BIOPHI      — retain candidates with Sapiens humanness score ≥ params.sapiens_min_score (default: 0.8)
+   ↓
+ABodyBuilder2      — structure prediction → PDB per humanized candidate
+   ↓
+FILTER_ABODYBUILDER2 — structural quality filter (CDR B-factor, Cα RMSD to input)
+   ↓
+OASis              — humanness scoring against observed antibody space
+   ↓
+RANK_OASIS         — rank candidates by OASis percentile
+   ↓
+results/
+```
+
+Tools used: **[AntiFold](https://github.com/oxpig/AntiFold)**, **[BioPhi / OASis](https://github.com/Merck/BioPhi)**, **[ABodyBuilder2](https://github.com/oxpig/ImmuneBuilder)**.
 
 ## Usage
 
 > [!NOTE]
 > If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/usage/introduction#how-to-run-a-pipeline) with `-profile test` before running the workflow on actual data.
 
-<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.
-     Explain what rows and columns represent. For instance (please edit as appropriate):
-
-First, prepare a samplesheet with your input data that looks as follows:
+First, prepare a samplesheet with your input data:
 
 `samplesheet.csv`:
 
 ```csv
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+sample,pdb,chain_heavy,chain_light
+Ab001,/path/to/Ab001.pdb,H,L
 ```
 
-Each row represents a fastq file (single-end) or a pair of fastq files (paired end).
-
--->
+| Column | Description |
+|---|---|
+| `sample` | Unique sample identifier |
+| `pdb` | Path to the antibody structure file (PDB format, IMGT-numbered) |
+| `chain_heavy` | Chain ID of the heavy chain in the PDB file |
+| `chain_light` | Chain ID of the light chain in the PDB file |
 
 Now, you can run the pipeline using:
 
-<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->
-
 ```bash
 nextflow run nf-core/antibodyoptimization \
-   -profile <docker/singularity/.../institute> \
+   -profile docker \
    --input samplesheet.csv \
    --outdir <OUTDIR>
 ```
@@ -69,6 +83,27 @@ nextflow run nf-core/antibodyoptimization \
 > Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
 
 For more details and further functionality, please refer to the [usage documentation](https://nf-co.re/antibodyoptimization/usage) and the [parameter documentation](https://nf-co.re/antibodyoptimization/parameters).
+
+## Testing
+
+A minimal test profile is provided that runs the pipeline against a pre-staged antibody structure ([6Y1L](https://www.rcsb.org/structure/6Y1L), IMGT-numbered).
+
+**Stub run** (no containers required, validates workflow logic only):
+
+```bash
+nextflow run . -profile test,docker --outdir ./results -stub
+```
+
+**Full test run** (requires the test PDB at `/data/antifold/pdbs/6y1l_imgt.pdb`):
+
+```bash
+nextflow run . -profile test,docker --outdir ./results --sapiens_min_score 0.75
+```
+
+> [!NOTE]
+> `--sapiens_min_score 0.75` is required for the 6y1l test case — VL sequences score ~0.79 at the default threshold of 0.8 and would be filtered out, causing a H/L count mismatch at `BIOPHI_SPLIT`.
+
+The test samplesheet (`assets/samplesheet_test.csv`) uses chain IDs `H` (heavy) and `L` (light).
 
 ## Pipeline output
 

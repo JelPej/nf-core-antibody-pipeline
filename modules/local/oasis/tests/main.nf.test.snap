@@ -1,0 +1,27 @@
+{
+    "oasis_versions": {
+        "content": [
+            [
+                "versions.yml:md5,a25b412c8168741ef9f7fac89b0187c3"
+            ]
+        ],
+        "timestamp": "2026-03-12T17:38:48.508030502",
+        "meta": {
+            "nf-test": "0.9.4",
+            "nextflow": "25.10.4"
+        }
+    },
+    "oasis_stub": {
+        "content": [
+            [
+                "Ab001_oasis_scores.xlsx",
+                "versions.yml:md5,a25b412c8168741ef9f7fac89b0187c3"
+            ]
+        ],
+        "timestamp": "2026-03-12T10:39:22.988178065",
+        "meta": {
+            "nf-test": "0.9.4",
+            "nextflow": "25.10.4"
+        }
+    }
+}
