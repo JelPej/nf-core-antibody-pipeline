@@ -24,20 +24,21 @@ workflow ANTIBODYOPTIMIZATION {
 
     take:
     ch_samplesheet // channel: samplesheet read in from --input
+    
     main:
 
     ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
 
     channel
-        .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
+        .fromList(samplesheetToList(ch_samplesheet, "${projectDir}/assets/schema_input.json"))
         .map { meta, pdb ->
 
             return [ meta,pdb  ]
         }
         .set { ch_pdbs }
 
-    
+
 
     //
     // Collate and save software versions
