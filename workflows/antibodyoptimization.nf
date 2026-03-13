@@ -13,6 +13,7 @@ include { ANTIFOLD_SPLIT         } from '../modules/local/antifold_split/main'
 include { BIOPHI_SAPIENS         } from '../modules/local/biophi/main'
 include { FILTER_BIOPHI          } from '../modules/local/filter_biophi/main'
 include { BIOPHI_SPLIT           } from '../modules/local/biophi_split/main'
+include { ABODYBUILDER2          } from '../modules/local/abodybuilder2/main'
 
 
 /*
@@ -59,10 +60,23 @@ workflow ANTIBODYOPTIMIZATION {
     ch_versions = ch_versions.mix(FILTER_BIOPHI.out.versions)
 
     //
-    // STEP 5: Clean filtered FASTA for ABodyBuilder2 input (rename _VH→H, _VL→L)
+    // STEP 5: Clean filtered FASTA and split into per-candidate FASTAs for ABodyBuilder2
     //
     BIOPHI_SPLIT(FILTER_BIOPHI.out.filtered)
     ch_versions = ch_versions.mix(BIOPHI_SPLIT.out.versions)
+
+    //
+    // STEP 6: ABodyBuilder2 structure prediction — one process per candidate
+    //
+    ch_candidate_fastas = BIOPHI_SPLIT.out.fastas
+        .transpose()
+        .map { meta, fasta ->
+            def idx = (fasta.baseName =~ /_candidate_(\d+)$/)[0][1]
+            [ meta + [id: "${meta.id}_candidate_${idx}"], fasta ]
+        }
+
+    ABODYBUILDER2(ch_candidate_fastas)
+    ch_versions = ch_versions.mix(ABODYBUILDER2.out.versions)
 
     //
     // Collate and save software versions

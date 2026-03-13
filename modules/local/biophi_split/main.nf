@@ -8,8 +8,8 @@ process BIOPHI_SPLIT {
     tuple val(meta), path(fasta)
 
     output:
-    tuple val(meta), path("*_clean.fasta"), emit: fasta
-    path "versions.yml",                    emit: versions
+    tuple val(meta), path("*_candidate_*.fasta"), emit: fastas
+    path "versions.yml",                          emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -17,7 +17,7 @@ process BIOPHI_SPLIT {
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    clean_fasta.py ${fasta} ${prefix}_clean.fasta
+    clean_fasta.py ${fasta} ${prefix}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -28,7 +28,8 @@ process BIOPHI_SPLIT {
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}_clean.fasta
+    touch ${prefix}_candidate_0001.fasta
+    touch ${prefix}_candidate_0002.fasta
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
