@@ -49,8 +49,8 @@ workflow NFCORE_ANTIBODYOPTIMIZATION {
     //
     ANTIBODYOPTIMIZATION (
     )
-    emit:
-    multiqc_report = ANTIBODYOPTIMIZATION.out.multiqc_report // channel: /path/to/multiqc_report.html
+    //emit:
+    //multiqc_report = ANTIBODYOPTIMIZATION.out.multiqc_report // channel: /path/to/multiqc_report.html
 }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,7 +90,8 @@ workflow {
         params.outdir,
         params.monochrome_logs,
         params.hook_url,
-        NFCORE_ANTIBODYOPTIMIZATION.out.multiqc_report
+        'DD'
+        //XNFCORE_ANTIBODYOPTIMIZATION.out.multiqc_report
     )
 }
 

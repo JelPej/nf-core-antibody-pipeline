@@ -38,6 +38,9 @@ workflow ANTIBODYOPTIMIZATION {
         .set { ch_pdbs }
 
 
+    ANTIFOLD_CDR (
+        ch_pdbs
+    )
 
     //
     // Collate and save software versions
@@ -100,16 +103,16 @@ workflow ANTIBODYOPTIMIZATION {
         )
     )
 
-    MULTIQC (
-        ch_multiqc_files.collect(),
-        ch_multiqc_config.toList(),
-        ch_multiqc_custom_config.toList(),
-        ch_multiqc_logo.toList(),
-        [],
-        []
-    )
+    //MULTIQC (
+    //    ch_multiqc_files.collect(),
+    //    ch_multiqc_config.toList(),
+    //    ch_multiqc_custom_config.toList(),
+    //    ch_multiqc_logo.toList(),
+    //    [],
+    //    []
+    //)
 
-    emit:multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
+    //emit:multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
     versions       = ch_versions                 // channel: [ path(versions.yml) ]
 
 }
