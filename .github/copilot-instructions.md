@@ -51,13 +51,21 @@ PDB input (antibody structure)
    ↓
 AntiFold          — CDR redesign via inverse folding → redesigned FASTA candidates
    ↓
-ABodyBuilder2     — structure prediction → PDB per candidate
+FILTER_ANTIFOLD   — CDR log-odds score (AntiFold `score` field) > threshold (user-defined)
    ↓
 BioPhi Sapiens    — humanization → humanized sequences
    ↓
+FILTER_BIOPHI     — Sapiens humanness score ≥ 0.8
+   ↓
+ABodyBuilder2     — structure prediction → PDB per humanized candidate
+   ↓
+FILTER_ABODYBUILDER2 — mean CDR B-factor error < 1.5 Å AND Cα CDR RMSD to input PDB < 2.0 Å
+   ↓
 OASis             — humanness scoring against observed antibody space
    ↓
-results/ (ranked candidates: sequences + humanness scores)
+RANK_OASIS        — rank by OASis percentile (0–100); exclude extreme outliers below params.oasis_min_percentile (default: 10)
+   ↓
+results/ (ranked candidates: sequences + OASis humanness scores)
 ```
 
 ### Channel Contract
@@ -67,12 +75,19 @@ Preserve these channel shapes at module boundaries:
 | Boundary | Channel shape |
 |---|---|
 | Input → AntiFold | `tuple val(meta), path(pdb)` |
-| AntiFold → ABodyBuilder2 | `tuple val(meta), path(redesigned_fasta)` |
-| ABodyBuilder2 → BioPhi | `tuple val(meta), path(predicted_pdb)` |
-| BioPhi → OASis | `tuple val(meta), path(humanized_fasta)` |
+| AntiFold → FILTER_ANTIFOLD | `tuple val(meta), path(redesigned_fasta), path(scores_csv)` |
+| FILTER_ANTIFOLD → BioPhi | `tuple val(meta), path(redesigned_fasta)` |
+| BioPhi → FILTER_BIOPHI | `tuple val(meta), path(humanized_fasta), path(sapiens_scores_csv)` |
+| FILTER_BIOPHI → ABodyBuilder2 | `tuple val(meta), path(humanized_fasta)` |
+| ABodyBuilder2 → FILTER_ABODYBUILDER2 | `tuple val(meta), path(predicted_pdb)` joined with original `path(input_pdb)` via `meta.id` |
+| FILTER_ABODYBUILDER2 → OASis | `tuple val(meta), path(predicted_pdb)` |
+| OASis → RANK_OASIS | `tuple val(meta), path(oasis_scores_csv)` |
+| RANK_OASIS → output | `tuple val(meta), path(ranked_scores_csv)` |
 
 The `meta` map MUST contain at minimum: `id`, `sample`, `chain_heavy`, `chain_light`.
 Do not add meta fields without updating all affected modules.
+
+Score files are used by filter modules for inter-stage filtering and published to `results/` as-is. Do not embed scores in the `meta` map. The original input PDB must be carried as a separate channel and joined by `meta.id` at `FILTER_ABODYBUILDER2`.
 
 ---
 
