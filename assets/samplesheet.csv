@@ -1,2 +1,4 @@
 sample,pdb,chain_heavy,chain_light
 Ab001,/path/to/Ab001.pdb,H,L
+Ab002,/path/to/Ab002.pdb,H,L
+
