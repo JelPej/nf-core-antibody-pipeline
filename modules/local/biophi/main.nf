@@ -9,6 +9,7 @@ process BIOPHI_SAPIENS {
 
     output:
     tuple val(meta), path("*_humanized.fasta"), emit: humanized
+    tuple val(meta), path("*_scores.csv"),      emit: sapiens_scores
     path "versions.yml",                        emit: versions
 
     when:
@@ -24,6 +25,12 @@ process BIOPHI_SAPIENS {
         --output ${prefix}_humanized.fasta \\
         ${args}
 
+    biophi sapiens \\
+        ${fasta} \\
+        --mean-score-only \\
+        --output ${prefix}_scores.csv \\
+        ${args}
+
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         biophi: \$(biophi --version 2>&1 | grep -oP '(?<=BioPhi )\\S+')
@@ -34,6 +41,7 @@ process BIOPHI_SAPIENS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}_humanized.fasta
+    touch ${prefix}_scores.csv
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
