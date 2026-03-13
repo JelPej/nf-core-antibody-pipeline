@@ -309,21 +309,27 @@ Examples:
 | #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | ✅ Done (`community.wave.seqera.io` / `howlinman/biophi-oasis` containers) |
 | #7 | Write nf-core module for BioPhi Sapiens humanization | ✅ Done (`modules/local/biophi/`) |
 | #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — wired |
-| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `RANK_OASIS`; remaining: `FILTER_ANTIFOLD` (separate owner) |
+| #9 | Wire all modules into end-to-end pipeline | ✅ Done — wired through `RANK_OASIS`; `FILTER_ANTIFOLD` tracked in #36/#58 |
 | #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — stub run passes all 13 processes; full run pending |
+| #36 | FILTER_ANTIFOLD module + bin script | 🔄 In progress — separate owner |
+| #58 | Wire FILTER_ANTIFOLD into pipeline | ⏳ Blocked by #36 |
+| #59 | nf-tests for modules missing coverage | ⏳ Pending — ANTIFOLD_CDR, ANTIFOLD_SPLIT, BIOPHI_SPLIT, FILTER_ABODYBUILDER2 |
 
 ### What still needs to be built
 
-| Item | Type | Blocked by |
+| Item | Issue | Blocked by |
 |---|---|---|
-| `FILTER_ANTIFOLD` | new module + bin script + wiring | separate owner |
-| Full end-to-end test | testing | `FILTER_ANTIFOLD` + live data |
+| `FILTER_ANTIFOLD` module + bin script | #36 | separate owner |
+| Wire `FILTER_ANTIFOLD` into workflow | #58 | #36 |
+| nf-tests for ANTIFOLD_CDR, ANTIFOLD_SPLIT, BIOPHI_SPLIT, FILTER_ABODYBUILDER2 | #59 | — |
+| Full end-to-end test | #10 | #36 + live data |
 
 ### Notes
 - BioPhi and OASis share one container image.
 - OASis requires `/data/oasis/OASis_9mers_v1.db` mounted read-only at runtime.
 - `ANTIFOLD_SPLIT` is wired between `ANTIFOLD_CDR` and `BIOPHI_SAPIENS`.
 - `FILTER_ANTIFOLD` (separate owner) will slot between `ANTIFOLD_SPLIT` and `BIOPHI_SAPIENS` when ready.
+- `ANTIFOLD_CDR` has `tests/main.nf` (wrong extension — not a valid nf-test file; fix tracked in #59).
 
 ---
 
