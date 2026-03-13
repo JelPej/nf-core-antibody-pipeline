@@ -26,9 +26,26 @@
 The pipeline runs four stages in sequence:
 
 1. **[AntiFold](https://github.com/oxpig/AntiFold)** — CDR redesign via inverse folding, producing redesigned sequence candidates
-2. **[ABodyBuilder2](https://github.com/oxpig/ImmuneBuilder)** — structure prediction for each candidate
-3. **[BioPhi Sapiens](https://github.com/Merck/BioPhi)** — sequence humanization
+2. **[BioPhi Sapiens](https://github.com/Merck/BioPhi)** — sequence humanization
+3. **[ABodyBuilder2](https://github.com/oxpig/ImmuneBuilder)** — structure prediction for each humanized candidate
 4. **[OASis](https://github.com/Merck/BioPhi)** — humanness scoring against observed antibody space
+
+### Filtering
+
+The pipeline applies quality filters between stages to reduce the candidate set before each computationally expensive step:
+
+| Stage transition | Module | Metric | Description | Default threshold |
+|---|---|---|---|---|
+| AntiFold → BioPhi | `FILTER_ANTIFOLD` | `--antifold_min_score` | `score` field in AntiFold FASTA header: average log-odds across CDR positions; higher (less negative) = better sequence–structure fit | user-defined |
+| BioPhi → ABodyBuilder2 | `FILTER_BIOPHI` | `--sapiens_min_score` | Mean Sapiens humanness score per sequence (0–1); filters poorly humanized candidates before structure prediction | `≥ 0.8` |
+| ABodyBuilder2 → OASis | `FILTER_ABODYBUILDER2` | `--abodybuilder2_max_error` | Mean per-residue error estimate across CDR positions from ABodyBuilder2 B-factor column (Å, ensemble disagreement); lower = more confident prediction | `< 1.5` |
+| ABodyBuilder2 → OASis | `FILTER_ABODYBUILDER2` | `--abodybuilder2_max_rmsd` | Cα RMSD of CDR regions between ABodyBuilder2-predicted structure and original input PDB (Å); ensures humanized sequence retains the parent fold | `< 2.0` |
+| OASis → output | `RANK_OASIS` | `--oasis_min_percentile` | OASis percentile (0–100), calibrated against 544 therapeutic mAbs: human mAbs median ~80, humanized ~37, murine ~5; candidates are ranked by percentile and only extreme outliers excluded | `≥ 10` |
+
+> [!NOTE]
+> `--antifold_min_score` has no hardcoded default as the appropriate threshold is antibody-dependent. All other thresholds are suggested defaults and can be overridden at runtime.
+>
+> OASis percentile is used for **ranking**, not hard filtering. A minimum percentile of 10 excludes only extreme outliers (murine-like sequences). Do not use OASis score alone as an acceptance/rejection criterion — humanness does not directly predict clinical immunogenicity.
 
 ## Usage
 

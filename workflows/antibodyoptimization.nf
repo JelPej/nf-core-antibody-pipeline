@@ -8,7 +8,11 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_antibodyoptimization_pipeline'
+include { samplesheetToList         } from 'plugin/nf-schema'
 include { BIOPHI_SAPIENS } from '../modules/local/biophi-oasis/biophi/main'
+include { ABODYBUILDER2  } from '../modules/nf-core/abodybuilder2'
+include { ANTIFOLD_CDR  } from '../modules/nf-core/antifold_cdr'
+
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -18,12 +22,25 @@ include { BIOPHI_SAPIENS } from '../modules/local/biophi-oasis/biophi/main'
 
 workflow ANTIBODYOPTIMIZATION {
 
-    take:
-    ch_samplesheet // channel: samplesheet read in from --input
+
     main:
 
     ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
+
+    channel
+        .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
+        .map { meta, pdb ->
+
+            return [ meta,pdb  ]
+        }
+        .view()
+        .set { ch_pdbs }
+
+
+    ANTIFOLD_CDR (
+        ch_pdbs
+    )
 
     //
     // Collate and save software versions
@@ -86,16 +103,16 @@ workflow ANTIBODYOPTIMIZATION {
         )
     )
 
-    MULTIQC (
-        ch_multiqc_files.collect(),
-        ch_multiqc_config.toList(),
-        ch_multiqc_custom_config.toList(),
-        ch_multiqc_logo.toList(),
-        [],
-        []
-    )
+    //MULTIQC (
+    //    ch_multiqc_files.collect(),
+    //    ch_multiqc_config.toList(),
+    //    ch_multiqc_custom_config.toList(),
+    //    ch_multiqc_logo.toList(),
+    //    [],
+    //    []
+    //)
 
-    emit:multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
+    //emit:multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
     versions       = ch_versions                 // channel: [ path(versions.yml) ]
 
 }
