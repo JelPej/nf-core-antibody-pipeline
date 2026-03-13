@@ -1,0 +1,93 @@
+nextflow_process {
+
+    name "Test Process FILTER_ANTIFOLD"
+    script "../main.nf"
+    process "FILTER_ANTIFOLD"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "filter_antifold"
+
+    // Integration test: 2 of 4 sequences exceed threshold 0.3
+    test("filters sequences below antifold score threshold (0.3)") {
+
+        when {
+            params {
+                antifold_min_score = 0.3
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_antifold/tests/fixtures/test_split.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 1 },
+                { assert file(process.out.filtered[0][1]).text.count('>') == 2 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Integration test: nothing passes threshold 1.0
+    test("emits empty fasta when no sequences meet threshold (1.0)") {
+
+        when {
+            params {
+                antifold_min_score = 1.0
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_antifold/tests/fixtures/test_split.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 1 },
+                { assert file(process.out.filtered[0][1]).text.count('>') == 0 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Stub test — no container or script execution required
+    test("stub - should succeed") {
+
+        options "-stub"
+
+        when {
+            params {
+                antifold_min_score = 0.3
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_antifold/tests/fixtures/test_split.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 1 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+}

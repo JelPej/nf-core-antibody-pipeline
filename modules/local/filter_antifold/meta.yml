@@ -1,5 +1,5 @@
 name: filter_antifold
-description: Filter AntiFold sequence candidates by per-sequence CDR log-odds score before downstream analysis
+description: Filter AntiFold sequence candidates by per-sequence CDR log-odds score before downstream humanization
 keywords:
   - antibody
   - design
@@ -8,7 +8,7 @@ keywords:
 
 tools:
   - python:
-      description: Python 3 standard library (csv, argparse)
+      description: Python 3 standard library (argparse, re)
       homepage: https://www.python.org
       documentation: https://docs.python.org
       licence: ["PSF-2.0"]
@@ -19,16 +19,12 @@ input:
         description: >
           Groovy Map containing sample information.
           e.g. [ id:'Ab001', sample:'Ab001', chain_heavy:'H', chain_light:'L' ]
-    - redesigned_fasta:
-        type: file
-        description: AntiFold redesigned antibody sequences
-        pattern: "*.{fa,fasta}"
-    - scores_csv:
+    - fasta:
         type: file
         description: >
-          AntiFold per-sequence scores. Must contain at least columns:
-          seq_id (or Name) and score (average CDR log-odds).
-        pattern: "*.csv"
+          Split AntiFold FASTA from ANTIFOLD_SPLIT. Each header carries
+          score=X.XXXX (CDR log-odds) embedded by AntiFold.
+        pattern: "*.{fa,fasta}"
 
 output:
   - filtered:
@@ -48,4 +44,4 @@ output:
           pattern: "versions.yml"
 
 authors:
-  - "@Hristijan"   # update as appropriate
+  - "@Hristijan"

@@ -1,36 +1,27 @@
 #!/usr/bin/env python3
 import argparse
-import csv
 import pathlib
+import re
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--fasta", required=True)
-    p.add_argument("--csv", required=True)
-    p.add_argument("--out_fasta", required=True)
-    p.add_argument("--min_score", type=float, required=True)
+    p.add_argument("--fasta",      required=True)
+    p.add_argument("--out_fasta",  required=True)
+    p.add_argument("--min_score",  type=float, required=True)
     args = p.parse_args()
 
-    fasta_in = pathlib.Path(args.fasta)
-    csv_in = pathlib.Path(args.csv)
+    fasta_in  = pathlib.Path(args.fasta)
     fasta_out = pathlib.Path(args.out_fasta)
 
-    keep_ids = set()
-    with csv_in.open() as fin:
-        reader = csv.DictReader(fin)
-        for row in reader:
-            sid = row.get("seq_id") or row.get("Name") or row.get("id")
-            if not sid:
-                continue
-            s = row.get("score")
-            if s is None:
-                continue
-            if float(s) > args.min_score:
-                keep_ids.add(sid)
+    # AntiFold header format (after antifold_split.py):
+    # >6y1l_imgt_HL_VH, score=0.2934, global_score=0.2934, ...
+    # Match "score=" not preceded by another word character (avoids "global_score=")
+    score_re = re.compile(r'(?<![a-z_])score=([0-9.]+)')
 
-    def header_id(h: str) -> str:
-        return h[1:].split()[0].split(",")[0]
+    def parse_score(header: str):
+        m = score_re.search(header)
+        return float(m.group(1)) if m else None
 
     kept = 0
     total = 0
@@ -43,7 +34,8 @@ def main():
             if header is None or not seq:
                 return
             total += 1
-            if header_id(header) in keep_ids:
+            score = parse_score(header)
+            if score is not None and score >= args.min_score:
                 kept += 1
                 fout.write(header)
                 fout.writelines(seq)
@@ -57,7 +49,7 @@ def main():
                 seq.append(line)
         flush()
 
-    print(f"FILTER_ANTIFOLD: kept {kept} / {total} sequences (score > {args.min_score})")
+    print(f"FILTER_ANTIFOLD: kept {kept} / {total} sequences (score >= {args.min_score})")
 
 
 if __name__ == "__main__":

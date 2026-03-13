@@ -50,7 +50,7 @@ ANTIFOLD_CDR      — CDR redesign via inverse folding → redesigned FASTA (VH/
    ↓
 ANTIFOLD_SPLIT    — split joined VH/VL into separate FASTA records (_VH / _VL suffixes)
    ↓
-FILTER_ANTIFOLD   — CDR log-odds score > threshold [module pending — separate owner]
+FILTER_ANTIFOLD   — CDR log-odds score ≥ params.antifold_min_score → filters split FASTA by per-sequence score in header
    ↓
 BIOPHI_SAPIENS    — humanization → humanized FASTA + per-sequence Sapiens scores CSV
    ↓
@@ -71,7 +71,7 @@ results/
 
 ### Current Workflow (wired as of this branch)
 
-`ANTIFOLD_CDR → ANTIFOLD_SPLIT → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT → ABODYBUILDER2 → FILTER_ABODYBUILDER2 → OASIS → RANK_OASIS`
+`ANTIFOLD_CDR → ANTIFOLD_SPLIT → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT → FILTER_ANTIFOLD → ABODYBUILDER2 → FILTER_ABODYBUILDER2 → OASIS → RANK_OASIS`
 
 ### Channel Contract
 
@@ -81,7 +81,7 @@ Preserve these channel shapes at module boundaries:
 |---|---|
 | Input → ANTIFOLD_CDR | `tuple val(meta), path(pdb)` |
 | ANTIFOLD_CDR → ANTIFOLD_SPLIT | `tuple val(meta), path(redesigned_fasta)` |
-| ANTIFOLD_SPLIT → FILTER_ANTIFOLD | `tuple val(meta), path(split_fasta), path(scores_csv)` (join `ANTIFOLD_CDR.out.logits` on `meta.id`) |
+| ANTIFOLD_SPLIT → FILTER_ANTIFOLD | `tuple val(meta), path(fasta)` — scores are parsed from AntiFold FASTA headers (`score=X.XXXX`); no CSV join needed |
 | FILTER_ANTIFOLD → BIOPHI_SAPIENS | `tuple val(meta), path(split_fasta)` |
 | BIOPHI_SAPIENS → FILTER_BIOPHI | `tuple val(meta), path(humanized_fasta), path(sapiens_scores_csv)` |
 | FILTER_BIOPHI → BIOPHI_SPLIT | `tuple val(meta), path(filtered_fasta)` |
@@ -122,7 +122,10 @@ The original input PDB must be carried as a separate channel and joined by `meta
 ## Common Commands
 
 ```bash
-# Run full pipeline (current wired state: through RANK_OASIS)
+# Run pipeline through BIOPHI_SPLIT (current wired state, FILTER_ANTIFOLD included)
+nextflow run . -profile docker,test --outdir ./results --antifold_min_score 0.2
+
+# Run with lower Sapiens threshold to get VL sequences through for local testing
 nextflow run . -profile docker,test --outdir ./results --sapiens_min_score 0.75
 
 # Run with lower Sapiens threshold (required for 6y1l — VL scores ~0.79 at default 0.8)
@@ -161,6 +164,7 @@ Ab001,/path/to/Ab001.pdb,H,L
 workflows/antibodyoptimization.nf               # main workflow — wire modules here
 modules/local/antifold_cdr/main.nf              # AntiFold CDR redesign
 modules/local/antifold_split/main.nf            # VH/VL FASTA splitter
+modules/local/filter_antifold/main.nf           # FILTER_ANTIFOLD — filters by score in FASTA header
 modules/local/biophi/main.nf                    # BioPhi Sapiens humanization (+ scores output)
 modules/local/filter_biophi/main.nf             # FILTER_BIOPHI
 modules/local/biophi_split/main.nf              # clean headers for ABodyBuilder2 input
@@ -169,6 +173,7 @@ modules/local/filter_abodybuilder2/main.nf      # CDR B-factor filter; emits pas
 modules/local/oasis/main.nf                     # OASis humanness scoring
 modules/local/rank_oasis/main.nf                # rank by OASis percentile
 bin/antifold_split.py                           # splits joined VH/VL FASTA
+bin/filter_antifold.py                          # filter script for FILTER_ANTIFOLD (parses score= from FASTA headers)
 bin/filter_by_sapiens_score.py                  # filter script for FILTER_BIOPHI
 bin/clean_fasta.py                              # header cleaning script for BIOPHI_SPLIT
 subworkflows/local/utils_nfcore_antibodyoptimization_pipeline/main.nf  # samplesheet parsing
@@ -308,28 +313,26 @@ Examples:
 | #5 | Write nf-core module for ABodyBuilder2 | ✅ Done (`modules/local/abodybuilder2/`) — wired |
 | #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | ✅ Done (`community.wave.seqera.io` / `howlinman/biophi-oasis` containers) |
 | #7 | Write nf-core module for BioPhi Sapiens humanization | ✅ Done (`modules/local/biophi/`) |
-| #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — wired |
-| #9 | Wire all modules into end-to-end pipeline | ✅ Done — wired through `RANK_OASIS`; `FILTER_ANTIFOLD` tracked in #36/#58 |
-| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — stub run passes all 13 processes; full run pending |
-| #36 | FILTER_ANTIFOLD module + bin script | 🔄 In progress — separate owner |
-| #58 | Wire FILTER_ANTIFOLD into pipeline | ⏳ Blocked by #36 |
-| #59 | nf-tests for modules missing coverage | ⏳ Pending — ANTIFOLD_CDR, ANTIFOLD_SPLIT, BIOPHI_SPLIT, FILTER_ABODYBUILDER2 |
+| #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — not yet wired |
+| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `FILTER_ANTIFOLD` → `BIOPHI_SPLIT`; remaining: `ABODYBUILDER2` (blocked on per-candidate splitting), `FILTER_ABODYBUILDER2`, `OASIS`, `RANK_OASIS` |
+| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — tested through `BIOPHI_SPLIT`; blocked on items above |
 
 ### What still needs to be built
 
 | Item | Issue | Blocked by |
 |---|---|---|
-| `FILTER_ANTIFOLD` module + bin script | #36 | separate owner |
-| Wire `FILTER_ANTIFOLD` into workflow | #58 | #36 |
-| nf-tests for ANTIFOLD_CDR, ANTIFOLD_SPLIT, BIOPHI_SPLIT, FILTER_ABODYBUILDER2 | #59 | — |
-| Full end-to-end test | #10 | #36 + live data |
+| Per-candidate FASTA splitting (between `BIOPHI_SPLIT` and `ABODYBUILDER2`) | bin script + wiring | non-unique IDs from `antifold_split.py` |
+| Wire `ABODYBUILDER2` | wiring | per-candidate splitting |
+| `FILTER_ABODYBUILDER2` | new module + bin script + wiring | — |
+| Wire `OASIS` | wiring | `ABODYBUILDER2` |
+| `RANK_OASIS` | new module + bin script + wiring | — |
+| Full end-to-end test | testing | all of the above |
 
 ### Notes
 - BioPhi and OASis share one container image.
 - OASis requires `/data/oasis/OASis_9mers_v1.db` mounted read-only at runtime.
-- `ANTIFOLD_SPLIT` is wired between `ANTIFOLD_CDR` and `BIOPHI_SAPIENS`.
-- `FILTER_ANTIFOLD` (separate owner) will slot between `ANTIFOLD_SPLIT` and `BIOPHI_SAPIENS` when ready.
-- `ANTIFOLD_CDR` has `tests/main.nf` (wrong extension — not a valid nf-test file; fix tracked in #59).
+- `FILTER_ANTIFOLD` filters by `score=X.XXXX` embedded in AntiFold FASTA headers — no CSV input. Requires `--antifold_min_score` to be set (no default; pipeline throws if null).
+- `ANTIFOLD_CDR.out.logits` (per-residue log-prob CSV) is published to `results/antifold/` for reference but is not consumed by any downstream module.
 
 ---
 
