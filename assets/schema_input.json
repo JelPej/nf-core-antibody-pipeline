@@ -33,6 +33,6 @@
                 "meta": ["chain_light"]
             }
         },
-        "required": ["sample", "pdb", "chain_heavy", "chain_light"]
+        "required": ["sample", "pdb"]
     }
 }
