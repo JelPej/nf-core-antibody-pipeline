@@ -5,7 +5,6 @@ process ANTIFOLD_CDR{
     //label 'process_medium'
 
     container 'quay.io/avitanov/antifold:0.3.1-build2'
-    //container 'antifold/test:0.3.1'
     // stageAs: "dir/" is required: antifold uses os.path.dirname(pdb_file) to resolve pdb_dir.
     // Without a parent directory, dirname returns "" which produces an invalid absolute path "/name.pdb".
     input:
