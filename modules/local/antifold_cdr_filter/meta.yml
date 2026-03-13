@@ -1,0 +1,51 @@
+name: filter_antifold
+description: Filter AntiFold sequence candidates by per-sequence CDR log-odds score before downstream analysis
+keywords:
+  - antibody
+  - design
+  - filtering
+  - antifold
+
+tools:
+  - python:
+      description: Python 3 standard library (csv, argparse)
+      homepage: https://www.python.org
+      documentation: https://docs.python.org
+      licence: ["PSF-2.0"]
+
+input:
+  - - meta:
+        type: map
+        description: >
+          Groovy Map containing sample information.
+          e.g. [ id:'Ab001', sample:'Ab001', chain_heavy:'H', chain_light:'L' ]
+    - redesigned_fasta:
+        type: file
+        description: AntiFold redesigned antibody sequences
+        pattern: "*.{fa,fasta}"
+    - scores_csv:
+        type: file
+        description: >
+          AntiFold per-sequence scores. Must contain at least columns:
+          seq_id (or Name) and score (average CDR log-odds).
+        pattern: "*.csv"
+
+output:
+  - filtered:
+      - meta:
+          type: map
+          description: Groovy Map containing sample information
+      - "*_filtered.fasta":
+          type: file
+          description: >
+            Sequences passing the AntiFold score threshold (params.antifold_min_score).
+            Empty if no sequences pass.
+          pattern: "*_filtered.fasta"
+  - versions:
+      - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+
+authors:
+  - "@Hristijan"   # update as appropriate

@@ -16,12 +16,11 @@ def main():
     csv_in = pathlib.Path(args.csv)
     fasta_out = pathlib.Path(args.out_fasta)
 
-    # 1) Collect allowed sequence IDs from CSV based on 'score' column
     keep_ids = set()
     with csv_in.open() as fin:
         reader = csv.DictReader(fin)
         for row in reader:
-            sid = row.get("seq_id") or row.get("id") or row.get("name")
+            sid = row.get("seq_id") or row.get("Name") or row.get("id")
             if not sid:
                 continue
             s = row.get("score")
@@ -30,13 +29,11 @@ def main():
             if float(s) > args.min_score:
                 keep_ids.add(sid)
 
-    # 2) Filter FASTA entries whose ID is in keep_ids
     def header_id(h: str) -> str:
         return h[1:].split()[0].split(",")[0]
 
     kept = 0
     total = 0
-
     with fasta_in.open() as fin, fasta_out.open("w") as fout:
         header = None
         seq = []
