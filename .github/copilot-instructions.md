@@ -56,9 +56,9 @@ BIOPHI_SAPIENS    — humanization → humanized FASTA + per-sequence Sapiens sc
    ↓
 FILTER_BIOPHI     — Sapiens humanness score ≥ params.sapiens_min_score (default: 0.8)
    ↓
-BIOPHI_SPLIT      — clean headers for ABodyBuilder2 (_VH→H, _VL→L) [wired; splitting into per-candidate FASTAs still needed]
+BIOPHI_SPLIT      — clean headers and split into per-candidate FASTAs (_VH→H, _VL→L; one file per H+L pair)
    ↓
-ABODYBUILDER2     — structure prediction → PDB per humanized candidate [module exists; not yet wired]
+ABODYBUILDER2     — structure prediction → PDB per humanized candidate (one process per candidate)
    ↓
 FILTER_ABODYBUILDER2 — CDR B-factor error < 1.5 Å AND Cα CDR RMSD < 2.0 Å [module missing]
    ↓
@@ -71,7 +71,7 @@ results/
 
 ### Current Workflow (wired as of this branch)
 
-`ANTIFOLD_CDR → ANTIFOLD_SPLIT → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT`
+`ANTIFOLD_CDR → ANTIFOLD_SPLIT → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT → ABODYBUILDER2`
 
 ### Channel Contract
 
@@ -100,16 +100,14 @@ The original input PDB must be carried as a separate channel and joined by `meta
 
 ### Known Issues / Open Design Gaps
 
-- **BIOPHI_SPLIT → ABODYBUILDER2 requires per-candidate FASTAs (unresolved)**: `ABODYBUILDER2`
-  needs one FASTA per candidate with exactly one `H` and one `L` sequence. `BIOPHI_SPLIT`
-  (`clean_fasta.py`) currently renames all sequences in a multi-sequence FASTA but does not split
-  them into per-candidate files. A splitting step is needed between `BIOPHI_SPLIT` and
-  `ABODYBUILDER2`. Blocked by non-unique IDs from `antifold_split.py` (all redesigned sequences
-  get `T=0.20_VH` / `T=0.20_VL`); positional VH[i]+VL[i] pairing is the fallback.
-
 - **VL Sapiens scores near threshold**: With `sapiens_min_score = 0.8`, VL sequences for 6y1l
   score ~0.79 and are filtered out. Use `--sapiens_min_score 0.75` for local testing to ensure
-  complete VH+VL pairs reach `BIOPHI_SPLIT`.
+  complete VH+VL pairs reach `BIOPHI_SPLIT`. If H/L counts are mismatched after filtering,
+  `clean_fasta.py` raises a `ValueError` with an actionable message.
+
+- **ABODYBUILDER2 runs as root**: `containerOptions = '--user root'` is set in `conf/modules.config`
+  because ImmuneBuilder 1.2 downloads model weights to the conda package directory at runtime and
+  requires write access. Weights are cached in the container after first download.
 
 - **FILTER_ANTIFOLD wiring**: Once the module is delivered, it slots between `ANTIFOLD_SPLIT` and
   `BIOPHI_SAPIENS`. It requires joining `ANTIFOLD_CDR.out.fasta` and `ANTIFOLD_CDR.out.logits`
@@ -120,11 +118,11 @@ The original input PDB must be carried as a separate channel and joined by `meta
 ## Common Commands
 
 ```bash
-# Run pipeline through BIOPHI_SPLIT (current wired state)
-nextflow run . -profile docker,test --outdir ./results
-
-# Run with lower Sapiens threshold to get VL sequences through for local testing
+# Run pipeline through ABODYBUILDER2 (current wired state)
 nextflow run . -profile docker,test --outdir ./results --sapiens_min_score 0.75
+
+# Run with lower Sapiens threshold (required for 6y1l — VL scores ~0.79 at default 0.8)
+# nextflow run . -profile docker,test --outdir ./results --sapiens_min_score 0.75  (same as above)
 
 # Dry-run (validate workflow structure without executing)
 nextflow run . -profile docker,test --outdir ./results -preview
@@ -301,21 +299,19 @@ Examples:
 | #2 | Write custom Dockerfile for AntiFold | ✅ Done (`quay.io/avitanov/antifold:0.3.1-build2`) |
 | #3 | Write nf-core module for AntiFold CDR redesign | ✅ Done (`modules/local/antifold_cdr/`) |
 | #4 | Write custom Dockerfile for ABodyBuilder2 | ✅ Done (`community.wave.seqera.io` container) |
-| #5 | Write nf-core module for ABodyBuilder2 | ✅ Done (`modules/local/abodybuilder2/`) — not yet wired |
+| #5 | Write nf-core module for ABodyBuilder2 | ✅ Done (`modules/local/abodybuilder2/`) — wired |
 | #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | ✅ Done (`community.wave.seqera.io` / `howlinman/biophi-oasis` containers) |
 | #7 | Write nf-core module for BioPhi Sapiens humanization | ✅ Done (`modules/local/biophi/`) |
 | #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — not yet wired |
-| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `BIOPHI_SPLIT`; remaining: `FILTER_ANTIFOLD` (separate owner), `ABODYBUILDER2` (blocked on per-candidate splitting), `FILTER_ABODYBUILDER2`, `OASIS`, `RANK_OASIS` |
-| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — tested through `BIOPHI_SPLIT`; blocked on items above |
+| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `ABODYBUILDER2`; remaining: `FILTER_ANTIFOLD` (separate owner), `FILTER_ABODYBUILDER2`, `OASIS`, `RANK_OASIS` |
+| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — stub run passes through `ABODYBUILDER2`; full run pending |
 
 ### What still needs to be built
 
 | Item | Type | Blocked by |
 |---|---|---|
-| Per-candidate FASTA splitting (between `BIOPHI_SPLIT` and `ABODYBUILDER2`) | bin script + wiring | non-unique IDs from `antifold_split.py` |
-| Wire `ABODYBUILDER2` | wiring | per-candidate splitting |
 | `FILTER_ABODYBUILDER2` | new module + bin script + wiring | — |
-| Wire `OASIS` | wiring | `ABODYBUILDER2` |
+| Wire `OASIS` | wiring | `FILTER_ABODYBUILDER2` |
 | `RANK_OASIS` | new module + bin script + wiring | — |
 | `FILTER_ANTIFOLD` | new module + bin script + wiring | separate owner |
 | Full end-to-end test | testing | all of the above |
