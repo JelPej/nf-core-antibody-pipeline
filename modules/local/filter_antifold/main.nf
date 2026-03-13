@@ -1,5 +1,3 @@
-nextflow.enable.dsl=2
-
 process FILTER_ANTIFOLD {
 
     tag "$meta.id"
@@ -8,26 +6,24 @@ process FILTER_ANTIFOLD {
     container 'docker.io/python:3.11'
 
     input:
-    tuple val(meta), path(redesigned_fasta), path(scores_csv)
-    path filter_script
+    tuple val(meta), path(fasta)
 
     output:
     tuple val(meta), path("*_filtered.fasta"), emit: filtered
     path "versions.yml",                       emit: versions
 
+    when:
+    task.ext.when == null || task.ext.when
+
     script:
     def args      = task.ext.args   ?: ''
     def prefix    = task.ext.prefix ?: "${meta.id}"
     def min_score = params.antifold_min_score
-    if( min_score == null )
+    if ( min_score == null )
         throw new IllegalArgumentException("params.antifold_min_score must be set for FILTER_ANTIFOLD")
-
     """
-    set -euo pipefail
-
-    python ${filter_script} \\
-        --fasta ${redesigned_fasta} \\
-        --csv ${scores_csv} \\
+    filter_antifold.py \\
+        --fasta ${fasta} \\
         --out_fasta ${prefix}_filtered.fasta \\
         --min_score ${min_score} \\
         ${args}
@@ -37,5 +33,15 @@ process FILTER_ANTIFOLD {
         python: \$(python3 --version 2>&1 | sed 's/Python //')
     END_VERSIONS
     """
-}
 
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}_filtered.fasta
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        python: \$(python3 --version 2>&1 | sed 's/Python //')
+    END_VERSIONS
+    """
+}

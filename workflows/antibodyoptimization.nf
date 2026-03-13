@@ -10,6 +10,7 @@ include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_anti
 include { samplesheetToList      } from 'plugin/nf-schema'
 include { ANTIFOLD_CDR           } from '../modules/local/antifold_cdr/main'
 include { ANTIFOLD_SPLIT         } from '../modules/local/antifold_split/main'
+include { FILTER_ANTIFOLD        } from '../modules/local/filter_antifold/main'
 include { BIOPHI_SAPIENS         } from '../modules/local/biophi/main'
 include { FILTER_BIOPHI          } from '../modules/local/filter_biophi/main'
 include { BIOPHI_SPLIT           } from '../modules/local/biophi_split/main'
@@ -44,13 +45,19 @@ workflow ANTIBODYOPTIMIZATION {
     ch_versions = ch_versions.mix(ANTIFOLD_SPLIT.out.versions)
 
     //
-    // STEP 3: BioPhi Sapiens humanization
+    // STEP 3: Filter by AntiFold CDR log-odds score
     //
-    BIOPHI_SAPIENS(ANTIFOLD_SPLIT.out.fasta)
+    FILTER_ANTIFOLD(ANTIFOLD_SPLIT.out.fasta)
+    ch_versions = ch_versions.mix(FILTER_ANTIFOLD.out.versions)
+
+    //
+    // STEP 4: BioPhi Sapiens humanization
+    //
+    BIOPHI_SAPIENS(FILTER_ANTIFOLD.out.filtered)
     ch_versions = ch_versions.mix(BIOPHI_SAPIENS.out.versions)
 
     //
-    // STEP 4: Filter by Sapiens humanness score
+    // STEP 5: Filter by Sapiens humanness score
     //
     ch_biophi_for_filter = BIOPHI_SAPIENS.out.humanized
         .join(BIOPHI_SAPIENS.out.sapiens_scores, by: 0)
@@ -59,7 +66,7 @@ workflow ANTIBODYOPTIMIZATION {
     ch_versions = ch_versions.mix(FILTER_BIOPHI.out.versions)
 
     //
-    // STEP 5: Clean filtered FASTA for ABodyBuilder2 input (rename _VH→H, _VL→L)
+    // STEP 6: Clean filtered FASTA for ABodyBuilder2 input (rename _VH→H, _VL→L)
     //
     BIOPHI_SPLIT(FILTER_BIOPHI.out.filtered)
     ch_versions = ch_versions.mix(BIOPHI_SPLIT.out.versions)

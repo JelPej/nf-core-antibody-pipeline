@@ -245,6 +245,13 @@
             "type": "object",
             "description": "Parameters controlling per-stage filtering thresholds.",
             "properties": {
+                "antifold_min_score": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "Minimum AntiFold per-sequence CDR log-odds score to retain a candidate. Required when FILTER_ANTIFOLD is active.",
+                    "fa_icon": "fas fa-filter"
+                },
                 "sapiens_min_score": {
                     "type": "number",
                     "default": 0.8,
