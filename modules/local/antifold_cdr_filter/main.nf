@@ -7,25 +7,13 @@ process FILTER_ANTIFOLD {
 
     container 'docker.io/python:3.11'
 
-    /*
-     * Input from ANTIFOLD_CDR:
-     *   meta             - sample metadata map
-     *   redesigned_fasta - AntiFold sampled sequences
-     *   scores_csv       - per-sequence scores with 'score' column
-     */
     input:
     tuple val(meta), path(redesigned_fasta), path(scores_csv)
+    path filter_script
 
-    /*
-     * Output:
-     *   <prefix>_filtered.fasta – sequences with score > params.antifold_min_score
-     */
     output:
     tuple val(meta), path("*_filtered.fasta"), emit: filtered
     path "versions.yml",                       emit: versions
-
-    when:
-    task.ext.when == null || task.ext.when
 
     script:
     def args      = task.ext.args   ?: ''
@@ -37,7 +25,7 @@ process FILTER_ANTIFOLD {
     """
     set -euo pipefail
 
-    python /workspace/modules/nf-core/antifold_cdr_filter/filter_antifold.py \\
+    python ${filter_script} \\
         --fasta ${redesigned_fasta} \\
         --csv ${scores_csv} \\
         --out_fasta ${prefix}_filtered.fasta \\
@@ -49,15 +37,5 @@ process FILTER_ANTIFOLD {
         python: \$(python3 --version 2>&1 | sed 's/Python //')
     END_VERSIONS
     """
-
-    stub:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    touch ${prefix}_filtered.fasta
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python3 --version 2>&1 | sed 's/Python //')
-    END_VERSIONS
-    """
 }
+
