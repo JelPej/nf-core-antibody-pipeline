@@ -55,6 +55,7 @@ with open(file_path, 'r') as f:
 mean_errors = {cdr: (cdr_errors[cdr]/cdr_counts[cdr] if cdr_counts[cdr] > 0 else 0.0)
                for cdr in cdr_ranges}
 
+# These thresholds are arbitrary and could be changed.
 thresholds = {
     'H1': 1.0, 'H2': 1.0, 'H3': 1.5,
     'L1': 0.9, 'L2': 0.9, 'L3': 1.0
