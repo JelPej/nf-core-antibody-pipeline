@@ -7,7 +7,7 @@ workflow {
 
     // 1) Use a single PDB for testing
     Channel
-        .fromPath('../modules/nf-core/antifold_cdr/tests/data/pdb/6y1l_imgt.pdb')
+        .fromPath('data/pdb/6y1l_imgt.pdb')
         .map { pdb -> tuple([ id: 'test_antifold' ], pdb) }
         | ANTIFOLD_CDR
 
