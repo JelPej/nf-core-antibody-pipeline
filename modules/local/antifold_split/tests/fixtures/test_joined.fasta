@@ -1,0 +1,4 @@
+>Ab001_HL, score=0.45, global_score=0.45, regions=['CDR1', 'CDR2', 'CDR3'], model_name=AntiFold, seed=42
+VQLQESGPGLVKPSETLSLTCAVSGYS/VLTQPPSVSAAPGQKVTISCSGSSSNIG
+>Ab001_HL, score=0.30, global_score=0.30, regions=['CDR1', 'CDR2', 'CDR3'], model_name=AntiFold, seed=42
+EVQLVESGGGLVQPGGSLRLSCAASGT/DIQMTQSPSSLSASVGDRVTITCRASQD
