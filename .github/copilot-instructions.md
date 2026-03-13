@@ -29,9 +29,6 @@ End-to-end nf-core Nextflow pipeline (`nf-core/antibodyoptimization`) for antibo
 Takes an antibody PDB structure as input and produces redesigned, structurally verified, and humanized
 antibody sequences with OASis humanness scores.
 
-The pipeline is composed of four modules that connect into a single end-to-end workflow:
-AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
-
 ### Core Stack
 
 | Layer | Technology |
@@ -49,19 +46,21 @@ AntiFold, ABodyBuilder2, BioPhi Sapiens, and OASis.
 ```
 PDB input (antibody structure)
    ↓
-AntiFold          — CDR redesign via inverse folding → redesigned FASTA candidates
+ANTIFOLD_CDR      — CDR redesign via inverse folding → redesigned FASTA candidates (VH/VL joined with '/')
    ↓
-FILTER_ANTIFOLD   — CDR log-odds score (AntiFold `score` field) > threshold (user-defined)
+ANTIFOLD_SPLIT    — split joined VH/VL sequences into separate FASTA records (_VH / _VL suffixes)
    ↓
-BioPhi Sapiens    — humanization → humanized sequences
+FILTER_ANTIFOLD   — CDR log-odds score (AntiFold `score` field) > threshold (user-defined) [in progress — separate owner]
    ↓
-FILTER_BIOPHI     — Sapiens humanness score ≥ 0.8
+BIOPHI_SAPIENS    — humanization → humanized FASTA + per-sequence Sapiens scores CSV
    ↓
-ABodyBuilder2     — structure prediction → PDB per humanized candidate
+FILTER_BIOPHI     — Sapiens humanness score ≥ params.sapiens_min_score (default: 0.8)
+   ↓
+ABODYBUILDER2     — structure prediction → PDB per humanized candidate
    ↓
 FILTER_ABODYBUILDER2 — mean CDR B-factor error < 1.5 Å AND Cα CDR RMSD to input PDB < 2.0 Å
    ↓
-OASis             — humanness scoring against observed antibody space
+OASIS             — humanness scoring against observed antibody space
    ↓
 RANK_OASIS        — rank by OASis percentile (0–100); exclude extreme outliers below params.oasis_min_percentile (default: 10)
    ↓
@@ -74,20 +73,30 @@ Preserve these channel shapes at module boundaries:
 
 | Boundary | Channel shape |
 |---|---|
-| Input → AntiFold | `tuple val(meta), path(pdb)` |
-| AntiFold → FILTER_ANTIFOLD | `tuple val(meta), path(redesigned_fasta), path(scores_csv)` |
-| FILTER_ANTIFOLD → BioPhi | `tuple val(meta), path(redesigned_fasta)` |
-| BioPhi → FILTER_BIOPHI | `tuple val(meta), path(humanized_fasta), path(sapiens_scores_csv)` |
-| FILTER_BIOPHI → ABodyBuilder2 | `tuple val(meta), path(humanized_fasta)` |
-| ABodyBuilder2 → FILTER_ABODYBUILDER2 | `tuple val(meta), path(predicted_pdb)` joined with original `path(input_pdb)` via `meta.id` |
-| FILTER_ABODYBUILDER2 → OASis | `tuple val(meta), path(predicted_pdb)` |
-| OASis → RANK_OASIS | `tuple val(meta), path(oasis_scores_csv)` |
+| Input → ANTIFOLD_CDR | `tuple val(meta), path(pdb)` |
+| ANTIFOLD_CDR → ANTIFOLD_SPLIT | `tuple val(meta), path(redesigned_fasta)` |
+| ANTIFOLD_CDR → FILTER_ANTIFOLD | `tuple val(meta), path(redesigned_fasta), path(scores_csv)` (join on `meta.id`) |
+| FILTER_ANTIFOLD → BIOPHI_SAPIENS | `tuple val(meta), path(split_fasta)` |
+| BIOPHI_SAPIENS → FILTER_BIOPHI | `tuple val(meta), path(humanized_fasta), path(sapiens_scores_csv)` |
+| FILTER_BIOPHI → ABODYBUILDER2 | `tuple val(meta), path(humanized_fasta)` — **one tuple per antibody candidate** (see Known Issues) |
+| ABODYBUILDER2 → FILTER_ABODYBUILDER2 | `tuple val(meta), path(predicted_pdb)` joined with original `path(input_pdb)` via `meta.id` |
+| FILTER_ABODYBUILDER2 → OASIS | `tuple val(meta), path(predicted_pdb)` |
+| OASIS → RANK_OASIS | `tuple val(meta), path(oasis_scores_csv)` |
 | RANK_OASIS → output | `tuple val(meta), path(ranked_scores_csv)` |
 
 The `meta` map MUST contain at minimum: `id`, `sample`, `chain_heavy`, `chain_light`.
 Do not add meta fields without updating all affected modules.
 
 Score files are used by filter modules for inter-stage filtering and published to `results/` as-is. Do not embed scores in the `meta` map. The original input PDB must be carried as a separate channel and joined by `meta.id` at `FILTER_ABODYBUILDER2`.
+
+### Known Issues / Open Design Gaps
+
+- **FILTER_BIOPHI → ABODYBUILDER2 compatibility (unresolved)**: `ABODYBUILDER2` expects one FASTA
+  per antibody candidate containing exactly one VH and one VL sequence. `FILTER_BIOPHI` currently
+  outputs a single multi-sequence FASTA. Before wiring `ABODYBUILDER2`, a splitting/pairing step is
+  needed. Blocked by a separate issue: `ANTIFOLD_SPLIT` produces non-unique sequence IDs for
+  redesigned candidates (all get `T=0.20_VH` / `T=0.20_VL`), making name-based VH+VL pairing
+  impossible. Fix required in `antifold_split.py` to include `sample=N` in the ID.
 
 ---
 
@@ -97,8 +106,14 @@ Score files are used by filter modules for inter-stage filtering and published t
 # Run full pipeline
 nextflow run . -profile docker --input samplesheet.csv --outdir results
 
-# Run with test data (uses 6y1l.pdb)
-nextflow run . -profile docker --input /data/pdb/6y1l.pdb --outdir ./results
+# Run with test profile (uses /data/antifold/pdbs/6y1l_imgt.pdb)
+nextflow run . -profile docker,test --outdir ./results
+
+# Dry-run (validate workflow structure without executing)
+nextflow run . -profile docker,test --outdir ./results -preview
+
+# Stub run (validates logic, no containers)
+nextflow run . -profile docker,test --outdir ./results -stub
 
 # Lint entire pipeline
 nf-core lint
@@ -124,19 +139,22 @@ Ab001,/path/to/Ab001.pdb,H,L
 ### Repository Layout (key paths)
 
 ```
-workflows/antibodyoptimization.nf          # main workflow stub — wire modules here
-modules/local/                             # all four custom modules go here
+workflows/antibodyoptimization.nf               # main workflow — wire modules here
+modules/local/antifold_cdr/main.nf              # AntiFold CDR redesign
+modules/local/antifold_split/main.nf            # VH/VL FASTA splitter
+modules/local/biophi/main.nf                   # BioPhi Sapiens humanization (+ scores output)
+modules/local/filter_biophi/main.nf            # FILTER_BIOPHI
+modules/local/abodybuilder2/main.nf            # ABodyBuilder2 structure prediction
+modules/local/oasis/main.nf                    # OASis humanness scoring
+bin/filter_by_sapiens_score.py                 # filter script used by FILTER_BIOPHI
 subworkflows/local/utils_nfcore_antibodyoptimization_pipeline/main.nf  # samplesheet parsing
-assets/samplesheet.csv                     # template samplesheet — update to PDB schema
-assets/schema_input.json                   # input validation schema — update to PDB schema
-conf/base.config                           # resource label definitions
-conf/modules.config                        # per-module publishDir and ext.args
-conf/test.config                           # test profile — update to point at 6y1l.pdb
+assets/samplesheet.csv                         # template samplesheet
+assets/samplesheet_test.csv                    # test samplesheet (points at 6y1l_imgt.pdb)
+assets/schema_input.json                       # input validation schema
+conf/base.config                               # resource label definitions
+conf/modules.config                            # per-module publishDir and ext.args
+conf/test.config                               # test profile
 ```
-
-> **Template TODOs still open**: `assets/samplesheet.csv`, `assets/schema_input.json`, and
-> `conf/test.config` still contain nf-core fastq/viralrecon defaults. These must be updated
-> as part of Issue #1 before module work begins.
 
 ### Host Data Paths
 
@@ -151,8 +169,8 @@ These paths are pre-staged on the host and must be mounted into containers where
 
 ## Key Architectural Decisions — Do Not Reverse Without Discussion
 
-- **All four tools are local modules** — not nf-core community modules. Do not replace them with
-  community equivalents without explicit instruction.
+- **All modules are local** (`modules/local/`) — not nf-core community modules. Do not replace them
+  with community equivalents without explicit instruction.
 - **Docker is the only supported profile** at this stage. Do not add Singularity/Conda profiles
   unless explicitly requested.
 - **The `meta` map is the cross-module contract.** Every process must pass `meta` through
@@ -163,6 +181,8 @@ These paths are pre-staged on the host and must be mounted into containers where
   `process_single` (1 CPU / 6 GB), `process_low` (2 CPU / 12 GB), `process_medium` (6 CPU / 36 GB),
   `process_high` (12 CPU / 72 GB), `process_long` (extended time), `process_high_memory` (200 GB),
   `process_gpu` (GPU accelerator — only effective under `-profile gpu`).
+- **`BIOPHI_SAPIENS` runs twice** — once with `--fasta-only` for the humanized FASTA, once with
+  `--mean-score-only` for the sapiens scores CSV. Both outputs are required by `FILTER_BIOPHI`.
 
 ---
 
@@ -200,7 +220,7 @@ These paths are pre-staged on the host and must be mounted into containers where
 
 ### Style
 
-- Process names: `SCREAMING_SNAKE_CASE` (e.g. `ANTIFOLD`, `ABODYBUILDER2`).
+- Process names: `SCREAMING_SNAKE_CASE` (e.g. `ANTIFOLD_CDR`, `ABODYBUILDER2`).
 - Workflow and subworkflow names: `SCREAMING_SNAKE_CASE`.
 - Channel variable names: `snake_case`, descriptive (e.g. `ch_redesigned_fasta`).
 - No inline comments unless the logic is genuinely non-obvious.
@@ -256,25 +276,25 @@ Examples:
 
 ## Issue Tracker & Dependency Map
 
-Current open issues and their status. Use this to understand sequencing before starting work.
-
-| # | Title | Label | Status | Depends on |
-|---|---|---|---|---|
-| #1 | Initialise pipeline using nf-core template | pipeline | template applied; samplesheet/schema/test.config still use fastq defaults; README pending | — |
-| #2 | Write custom Dockerfile for AntiFold | dockerfile | not started | — |
-| #3 | Write nf-core module for AntiFold CDR redesign | module | not started | #2 |
-| #4 | Write custom Dockerfile for ABodyBuilder2 | dockerfile | not started | — |
-| #5 | Write nf-core module for ABodyBuilder2 structural verification | module | not started | #4 |
-| #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | dockerfile | Dockerfile + BioPhi done; OASis DB mount pending | — |
-| #7 | Write nf-core module for BioPhi Sapiens humanization | module | not started | #6 |
-| #8 | Write nf-core module for OASis humanness scoring | module | not started | #6 |
-| #9 | Wire all modules into end-to-end pipeline | pipeline | not started | #3 #5 #7 #8 |
-| #10 | End-to-end test run with 6y1l test PDB | testing | not started | #9 |
+| # | Title | Status |
+|---|---|---|
+| #1 | Initialise pipeline using nf-core template | ✅ Done |
+| #2 | Write custom Dockerfile for AntiFold | ✅ Done (`quay.io/avitanov/antifold:0.3.1-build2`) |
+| #3 | Write nf-core module for AntiFold CDR redesign | ✅ Done (`modules/local/antifold_cdr/`) |
+| #4 | Write custom Dockerfile for ABodyBuilder2 | ✅ Done (community.wave.seqera.io container) |
+| #5 | Write nf-core module for ABodyBuilder2 | ✅ Done (`modules/local/abodybuilder2/`) |
+| #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | ✅ Done (community.wave.seqera.io container) |
+| #7 | Write nf-core module for BioPhi Sapiens humanization | ✅ Done (`modules/local/biophi/`) |
+| #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) |
+| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `FILTER_BIOPHI`; remaining: `FILTER_ANTIFOLD` (separate owner), `ABODYBUILDER2`, `FILTER_ABODYBUILDER2`, `RANK_OASIS` |
+| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — tested through `FILTER_BIOPHI`; blocked on FILTER_BIOPHI → ABODYBUILDER2 compatibility (see Known Issues) |
 
 ### Notes
-- BioPhi and OASis share one Dockerfile (conda install `biophi` installs both).
+- BioPhi and OASis share one container image (conda install `biophi` installs both).
 - OASis requires the database at `/data/oasis/OASis_9mers_v1.db` to be mounted at runtime.
-- The nf-core template (Issue #1) must be applied before any module work — it defines the directory layout.
+- `ANTIFOLD_SPLIT` sits between `ANTIFOLD_CDR` and `FILTER_ANTIFOLD`/`BIOPHI_SAPIENS` — it is
+  already implemented and wired.
+- `FILTER_ANTIFOLD` is being developed by a separate team member; do not implement it independently.
 
 ---
 

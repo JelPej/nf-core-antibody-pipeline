@@ -1,4 +1,4 @@
-<h1>
+t<h1>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/nf-core-antibodyoptimization_logo_dark.png">
     <img alt="nf-core/antibodyoptimization" src="docs/images/nf-core-antibodyoptimization_logo_light.png">
@@ -23,29 +23,31 @@
 
 **nf-core/antibodyoptimization** is a bioinformatics pipeline for end-to-end antibody optimization. It takes an antibody structure in PDB format as input and produces redesigned, structurally verified, and humanized antibody sequences with OASis humanness scores.
 
-The pipeline runs four stages in sequence:
+The pipeline runs the following stages in sequence:
 
-1. **[AntiFold](https://github.com/oxpig/AntiFold)** — CDR redesign via inverse folding, producing redesigned sequence candidates
-2. **[BioPhi Sapiens](https://github.com/Merck/BioPhi)** — sequence humanization
-3. **[ABodyBuilder2](https://github.com/oxpig/ImmuneBuilder)** — structure prediction for each humanized candidate
-4. **[OASis](https://github.com/Merck/BioPhi)** — humanness scoring against observed antibody space
+```
+PDB input
+   ↓
+AntiFold           — CDR redesign via inverse folding → redesigned FASTA candidates
+   ↓
+FILTER_ANTIFOLD    — retain candidates above CDR log-odds score threshold
+   ↓
+BioPhi Sapiens     — humanization → humanized sequences + per-sequence Sapiens scores
+   ↓
+FILTER_BIOPHI      — retain candidates with Sapiens humanness score ≥ params.sapiens_min_score (default: 0.8)
+   ↓
+ABodyBuilder2      — structure prediction → PDB per humanized candidate
+   ↓
+FILTER_ABODYBUILDER2 — structural quality filter (CDR B-factor, Cα RMSD to input)
+   ↓
+OASis              — humanness scoring against observed antibody space
+   ↓
+RANK_OASIS         — rank candidates by OASis percentile
+   ↓
+results/
+```
 
-### Filtering
-
-The pipeline applies quality filters between stages to reduce the candidate set before each computationally expensive step:
-
-| Stage transition | Module | Metric | Description | Default threshold |
-|---|---|---|---|---|
-| AntiFold → BioPhi | `FILTER_ANTIFOLD` | `--antifold_min_score` | `score` field in AntiFold FASTA header: average log-odds across CDR positions; higher (less negative) = better sequence–structure fit | user-defined |
-| BioPhi → ABodyBuilder2 | `FILTER_BIOPHI` | `--sapiens_min_score` | Mean Sapiens humanness score per sequence (0–1); filters poorly humanized candidates before structure prediction | `≥ 0.8` |
-| ABodyBuilder2 → OASis | `FILTER_ABODYBUILDER2` | `--abodybuilder2_max_error` | Mean per-residue error estimate across CDR positions from ABodyBuilder2 B-factor column (Å, ensemble disagreement); lower = more confident prediction | `< 1.5` |
-| ABodyBuilder2 → OASis | `FILTER_ABODYBUILDER2` | `--abodybuilder2_max_rmsd` | Cα RMSD of CDR regions between ABodyBuilder2-predicted structure and original input PDB (Å); ensures humanized sequence retains the parent fold | `< 2.0` |
-| OASis → output | `RANK_OASIS` | `--oasis_min_percentile` | OASis percentile (0–100), calibrated against 544 therapeutic mAbs: human mAbs median ~80, humanized ~37, murine ~5; candidates are ranked by percentile and only extreme outliers excluded | `≥ 10` |
-
-> [!NOTE]
-> `--antifold_min_score` has no hardcoded default as the appropriate threshold is antibody-dependent. All other thresholds are suggested defaults and can be overridden at runtime.
->
-> OASis percentile is used for **ranking**, not hard filtering. A minimum percentile of 10 excludes only extreme outliers (murine-like sequences). Do not use OASis score alone as an acceptance/rejection criterion — humanness does not directly predict clinical immunogenicity.
+Tools used: **[AntiFold](https://github.com/oxpig/AntiFold)**, **[BioPhi / OASis](https://github.com/Merck/BioPhi)**, **[ABodyBuilder2](https://github.com/oxpig/ImmuneBuilder)**.
 
 ## Usage
 
