@@ -19,6 +19,8 @@ include { ANTIBODYOPTIMIZATION  } from './workflows/antibodyoptimization'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_antibodyoptimization_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_antibodyoptimization_pipeline'
 include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_antibodyoptimization_pipeline'
+include { ANTIFOLD_CDR      } from './modules/nf-core/antifold_cdr/main.nf'
+include { FILTER_ANTIFOLD   } from './modules/nf-core/antifold_cdr_filter/main.nf'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
