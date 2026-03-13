@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Filter a FASTA file by Sapiens humanness score from a BioPhi scores CSV.
 
-Expected CSV format:
-    Name,sapiens_score
-    seq1_VH,0.92
-    seq1_VL,0.85
+Expected CSV format (biophi sapiens --mean-score-only):
+    id,chain,sapiens_score
+    seq1_VH,H,0.92
+    seq1_VL,L,0.85
 """
 
 import argparse
@@ -22,7 +22,9 @@ def parse_fasta(fasta_path):
             if line.startswith(">"):
                 if name is not None:
                     sequences.append((name, "".join(seq_lines)))
-                name = line[1:]
+                # Use only the first token as the sequence ID (BioPhi appends
+                # annotation after the ID, e.g. ">seq1_VH VH Sapiens 1iter ...")
+                name = line[1:].split()[0]
                 seq_lines = []
             elif line:
                 seq_lines.append(line)
@@ -36,7 +38,7 @@ def parse_scores(csv_path, score_col):
     with open(csv_path, newline="") as fh:
         reader = csv.DictReader(fh)
         for row in reader:
-            scores[row["Name"]] = float(row[score_col])
+            scores[row["id"]] = float(row[score_col])
     return scores
 
 
