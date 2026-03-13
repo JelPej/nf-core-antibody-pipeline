@@ -1,10 +1,11 @@
-process ANTIFOLD_CDR
-{
+process ANTIFOLD_CDR{
     tag "${meta.id}"
-    label 'process_medium'
+    cpus 6
+    memory 12.GB
+    //label 'process_medium'
 
-    container 'quay.io/avitanov/antifold:0.3.1'
-
+    container 'quay.io/avitanov/antifold:0.3.1-build2'
+    //container 'antifold/test:0.3.1'
     // stageAs: "dir/" is required: antifold uses os.path.dirname(pdb_file) to resolve pdb_dir.
     // Without a parent directory, dirname returns "" which produces an invalid absolute path "/name.pdb".
     input:
@@ -53,11 +54,4 @@ process ANTIFOLD_CDR
         antifold: \$(python3 -c "from importlib.metadata import version; print(version('antifold'))")
     END_VERSIONS
     """
-}
-
-workflow {
-    Channel
-        .fromPath('/data/pdb/6y1l_imgt.pdb')          // adjust to your test PDB path
-        .map { pdb -> tuple([ id: 'test_antifold' ], pdb) }
-        | ANTIFOLD_CDR
 }
