@@ -1,0 +1,40 @@
+nextflow_process {
+
+    name "Test Process ANTIFOLD_CDR"
+    script "../main.nf"
+    process "ANTIFOLD_CDR"
+
+    tag "modules"
+    tag "antifold_cdr"
+
+    config "./nextflow.config"
+
+    // Integration test — requires the built container image
+    // Run with: nf-test test modules/nf-core/antifold_cdr/tests/main.nf.test
+    test("integration - 6y1l PDB with explicit chains") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: '6y1l', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/nf-core/antifold_cdr/tests/data/pdb/6y1l_imgt.pdb", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.logits.size() == 1 },
+                { assert file(process.out.logits[0][1]).name.endsWith('.csv') },
+                { assert file(process.out.logits[0][1]).size() > 0 },
+                { assert process.out.fasta.size() == 1 },
+                { assert file(process.out.fasta[0][1]).name.endsWith('.fasta') },
+                { assert file(process.out.fasta[0][1]).size() > 0 },
+                { assert snapshot(process.out.versions).match("antifold_cdr_versions") }
+            )
+        }
+    }
+}

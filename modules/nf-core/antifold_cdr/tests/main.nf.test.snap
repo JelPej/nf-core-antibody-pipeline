@@ -1,0 +1,14 @@
+{
+    "antifold_cdr_versions": {
+        "content": [
+            [
+                "versions.yml:md5,c49ee8c0eaa407fa963f77d9dfaa5856"
+            ]
+        ],
+        "timestamp": "2026-03-13T12:20:01.696584623",
+        "meta": {
+            "nf-test": "0.9.4",
+            "nextflow": "25.10.4"
+        }
+    }
+}
