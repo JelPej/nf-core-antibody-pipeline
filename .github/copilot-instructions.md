@@ -60,18 +60,18 @@ BIOPHI_SPLIT      — clean headers and split into per-candidate FASTAs (_VH→H
    ↓
 ABODYBUILDER2     — structure prediction → PDB per humanized candidate (one process per candidate)
    ↓
-FILTER_ABODYBUILDER2 — CDR B-factor error < 1.5 Å AND Cα CDR RMSD < 2.0 Å [module missing]
+FILTER_ABODYBUILDER2 — CDR B-factor error filter (`bin/pdb_filter.py`); passes FASTA of surviving candidates
    ↓
-OASIS             — humanness scoring against observed antibody space [module exists; not yet wired]
+OASIS             — humanness scoring against observed antibody space
    ↓
-RANK_OASIS        — rank by OASis percentile [module missing]
+RANK_OASIS        — rank by OASis percentile; excludes candidates below params.oasis_min_percentile (default: 10)
    ↓
 results/
 ```
 
 ### Current Workflow (wired as of this branch)
 
-`ANTIFOLD_CDR → ANTIFOLD_SPLIT → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT → ABODYBUILDER2`
+`ANTIFOLD_CDR → ANTIFOLD_SPLIT → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT → ABODYBUILDER2 → FILTER_ABODYBUILDER2 → OASIS → RANK_OASIS`
 
 ### Channel Contract
 
@@ -86,9 +86,9 @@ Preserve these channel shapes at module boundaries:
 | BIOPHI_SAPIENS → FILTER_BIOPHI | `tuple val(meta), path(humanized_fasta), path(sapiens_scores_csv)` |
 | FILTER_BIOPHI → BIOPHI_SPLIT | `tuple val(meta), path(filtered_fasta)` |
 | BIOPHI_SPLIT → ABODYBUILDER2 | `tuple val(meta), path(candidate_fasta)` — **one tuple per antibody candidate** (requires per-candidate splitting before this boundary) |
-| ABODYBUILDER2 → FILTER_ABODYBUILDER2 | `tuple val(meta), path(predicted_pdb)` joined with original `path(input_pdb)` via `meta.id` |
-| FILTER_ABODYBUILDER2 → OASIS | `tuple val(meta), path(predicted_pdb)` |
-| OASIS → RANK_OASIS | `tuple val(meta), path(oasis_scores_csv)` |
+| ABODYBUILDER2 → FILTER_ABODYBUILDER2 | `tuple val(meta), path(candidate_fasta), path(predicted_pdb)` — join `ch_candidate_fastas` with `ABODYBUILDER2.out.pdb` on `meta.id` |
+| FILTER_ABODYBUILDER2 → OASIS | `tuple val(meta), path(filtered_fasta)` via `out.filtered` |
+| OASIS → RANK_OASIS | `tuple val(meta), path(oasis_scores_xlsx)` |
 | RANK_OASIS → output | `tuple val(meta), path(ranked_scores_csv)` |
 
 The `meta` map MUST contain at minimum: `id`, `sample`, `chain_heavy`, `chain_light`.
@@ -113,12 +113,16 @@ The original input PDB must be carried as a separate channel and joined by `meta
   `BIOPHI_SAPIENS`. It requires joining `ANTIFOLD_CDR.out.fasta` and `ANTIFOLD_CDR.out.logits`
   on `meta.id` before passing to `FILTER_ANTIFOLD`.
 
+- **FILTER_ABODYBUILDER2 passes FASTA, not PDB**: The module filters on PDB B-factors but emits
+  the passing candidate FASTA (not the PDB) via `out.filtered`. OASIS receives this FASTA directly.
+  The original note about carrying the input PDB to this boundary no longer applies.
+
 ---
 
 ## Common Commands
 
 ```bash
-# Run pipeline through ABODYBUILDER2 (current wired state)
+# Run full pipeline (current wired state: through RANK_OASIS)
 nextflow run . -profile docker,test --outdir ./results --sapiens_min_score 0.75
 
 # Run with lower Sapiens threshold (required for 6y1l — VL scores ~0.79 at default 0.8)
@@ -161,7 +165,9 @@ modules/local/biophi/main.nf                    # BioPhi Sapiens humanization (+
 modules/local/filter_biophi/main.nf             # FILTER_BIOPHI
 modules/local/biophi_split/main.nf              # clean headers for ABodyBuilder2 input
 modules/local/abodybuilder2/main.nf             # ABodyBuilder2 structure prediction
+modules/local/filter_abodybuilder2/main.nf      # CDR B-factor filter; emits passing candidate FASTA
 modules/local/oasis/main.nf                     # OASis humanness scoring
+modules/local/rank_oasis/main.nf                # rank by OASis percentile
 bin/antifold_split.py                           # splits joined VH/VL FASTA
 bin/filter_by_sapiens_score.py                  # filter script for FILTER_BIOPHI
 bin/clean_fasta.py                              # header cleaning script for BIOPHI_SPLIT
@@ -302,19 +308,16 @@ Examples:
 | #5 | Write nf-core module for ABodyBuilder2 | ✅ Done (`modules/local/abodybuilder2/`) — wired |
 | #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | ✅ Done (`community.wave.seqera.io` / `howlinman/biophi-oasis` containers) |
 | #7 | Write nf-core module for BioPhi Sapiens humanization | ✅ Done (`modules/local/biophi/`) |
-| #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — not yet wired |
-| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `ABODYBUILDER2`; remaining: `FILTER_ANTIFOLD` (separate owner), `FILTER_ABODYBUILDER2`, `OASIS`, `RANK_OASIS` |
-| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — stub run passes through `ABODYBUILDER2`; full run pending |
+| #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — wired |
+| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `RANK_OASIS`; remaining: `FILTER_ANTIFOLD` (separate owner) |
+| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — stub run passes all 13 processes; full run pending |
 
 ### What still needs to be built
 
 | Item | Type | Blocked by |
 |---|---|---|
-| `FILTER_ABODYBUILDER2` | new module + bin script + wiring | — |
-| Wire `OASIS` | wiring | `FILTER_ABODYBUILDER2` |
-| `RANK_OASIS` | new module + bin script + wiring | — |
 | `FILTER_ANTIFOLD` | new module + bin script + wiring | separate owner |
-| Full end-to-end test | testing | all of the above |
+| Full end-to-end test | testing | `FILTER_ANTIFOLD` + live data |
 
 ### Notes
 - BioPhi and OASis share one container image.
