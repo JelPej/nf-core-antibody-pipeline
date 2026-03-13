@@ -1,4 +1,4 @@
-t<h1>
+<h1>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/nf-core-antibodyoptimization_logo_dark.png">
     <img alt="nf-core/antibodyoptimization" src="docs/images/nf-core-antibodyoptimization_logo_light.png">
@@ -94,11 +94,14 @@ A minimal test profile is provided that runs the pipeline against a pre-staged a
 nextflow run . -profile test,docker --outdir ./results -stub
 ```
 
-**Full test run** (requires the test PDB to be available on the host at `/data/antifold/pdbs/6y1l_imgt.pdb`):
+**Full test run** (requires the test PDB at `/data/antifold/pdbs/6y1l_imgt.pdb`):
 
 ```bash
-nextflow run . -profile test,docker --outdir ./results
+nextflow run . -profile test,docker --outdir ./results --sapiens_min_score 0.75
 ```
+
+> [!NOTE]
+> `--sapiens_min_score 0.75` is required for the 6y1l test case — VL sequences score ~0.79 at the default threshold of 0.8 and would be filtered out, causing a H/L count mismatch at `BIOPHI_SPLIT`.
 
 The test samplesheet (`assets/samplesheet_test.csv`) uses chain IDs `H` (heavy) and `L` (light).
 
