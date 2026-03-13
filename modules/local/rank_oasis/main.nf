@@ -2,7 +2,7 @@ process RANK_OASIS {
     tag "$meta.id"
     label 'process_low'
 
-    container 'quay.io/biophi-openpyxl:1.0.0'
+    container 'docker.io/howlinman/biophi-oasis:1.0.0'
 
     input:
     tuple val(meta), path(oasis_scores_xlsx)
@@ -18,6 +18,12 @@ process RANK_OASIS {
     def prefix      = task.ext.prefix ?: "${meta.id}"
     def min_pct     = params.oasis_min_percentile ?: 10
     """
+    # openpyxl is not bundled in the biophi-oasis container (xlsxwriter is write-only);
+    # install to a local prefix so the install works regardless of container user.
+    export PYTHONUSERBASE="\$(pwd)/.pyuser"
+    /opt/conda/envs/biophi-env/bin/pip install --quiet --user openpyxl
+    export PYTHONPATH="\$(pwd)/.pyuser/lib/python3.9/site-packages:\${PYTHONPATH:-}"
+
     rank_oasis.py \\
         ${oasis_scores_xlsx} \\
         ${prefix}_ranked.csv \\

@@ -252,6 +252,20 @@
                     "maximum": 1.0,
                     "description": "Minimum BioPhi Sapiens humanness score to retain a candidate (0–1).",
                     "fa_icon": "fas fa-filter"
+                },
+                "oasis_min_percentile": {
+                    "type": "number",
+                    "default": 10,
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Minimum OASis percentile to retain a candidate (0–100); candidates below this threshold are excluded from ranked output.",
+                    "fa_icon": "fas fa-filter"
+                },
+                "oasis_db": {
+                    "type": "string",
+                    "default": "/data/oasis/OASis_9mers_v1.db",
+                    "description": "Path to the OASis 9-mer SQLite database (~22 GB).",
+                    "fa_icon": "fas fa-database"
                 }
             }
         }
