@@ -1,0 +1,63 @@
+nextflow_process {
+
+    name "Test Process BIOPHI_SPLIT"
+    script "../main.nf"
+    process "BIOPHI_SPLIT"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "biophi_split"
+
+    // Integration test: 2 VH + 2 VL sequences → 2 per-candidate FASTA files
+    test("splits BioPhi humanized FASTA into per-candidate files") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/biophi_split/tests/fixtures/test_humanized.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.fastas.size() == 1 },
+                { assert process.out.fastas[0][1] instanceof List },
+                { assert process.out.fastas[0][1].size() == 2 },
+                { assert process.out.fastas[0][1].every { f -> file(f).text.contains('>H') } },
+                { assert process.out.fastas[0][1].every { f -> file(f).text.contains('>L') } },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Stub test — no container execution required
+    test("stub - should succeed") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/biophi_split/tests/fixtures/test_humanized.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.fastas.size() == 1 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+}

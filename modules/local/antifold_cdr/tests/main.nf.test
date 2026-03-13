@@ -1,0 +1,35 @@
+nextflow_process {
+
+    name "Test Process ANTIFOLD_CDR"
+    script "../main.nf"
+    process "ANTIFOLD_CDR"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "antifold_cdr"
+
+    // Stub test — validates process structure without requiring the GPU container
+    test("stub - should succeed") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/antifold_cdr/tests/data/pdb/6y1l_imgt.pdb", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+}

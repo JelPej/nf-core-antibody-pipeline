@@ -1,0 +1,62 @@
+nextflow_process {
+
+    name "Test Process ANTIFOLD_SPLIT"
+    script "../main.nf"
+    process "ANTIFOLD_SPLIT"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "antifold_split"
+
+    // Integration test: 2 joined VH/VL sequences → 4 split records
+    test("splits joined VH/VL FASTA into separate _VH and _VL records") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/antifold_split/tests/fixtures/test_joined.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.fasta.size() == 1 },
+                { assert file(process.out.fasta[0][1]).text.count('>') == 4 },
+                { assert file(process.out.fasta[0][1]).text.contains('_VH') },
+                { assert file(process.out.fasta[0][1]).text.contains('_VL') },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Stub test — no container execution required
+    test("stub - should succeed") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/antifold_split/tests/fixtures/test_joined.fasta", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.fasta.size() == 1 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+}

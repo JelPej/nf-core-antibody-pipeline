@@ -1,0 +1,86 @@
+nextflow_process {
+
+    name "Test Process FILTER_ABODYBUILDER2"
+    script "../main.nf"
+    process "FILTER_ABODYBUILDER2"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "filter_abodybuilder2"
+
+    // Integration test: PDB with CDR B-factors below all thresholds → filtered FASTA emitted
+    test("passes candidate when all CDR B-factors are below thresholds") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_abodybuilder2/tests/fixtures/candidate.fasta", checkIfExists: true),
+                    file("${projectDir}/modules/local/filter_abodybuilder2/tests/fixtures/passing.pdb", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 1 },
+                { assert process.out.error.size() == 0 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Integration test: PDB with H1 B-factor above threshold (2.00 > 1.0) → error file emitted
+    test("rejects candidate when a CDR B-factor exceeds threshold") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_abodybuilder2/tests/fixtures/candidate.fasta", checkIfExists: true),
+                    file("${projectDir}/modules/local/filter_abodybuilder2/tests/fixtures/failing.pdb", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.filtered.size() == 0 },
+                { assert process.out.error.size() == 1 },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+
+    // Stub test — no container execution required
+    test("stub - should succeed") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'Ab001', sample: 'Ab001', chain_heavy: 'H', chain_light: 'L' ],
+                    file("${projectDir}/modules/local/filter_abodybuilder2/tests/fixtures/candidate.fasta", checkIfExists: true),
+                    file("${projectDir}/modules/local/filter_abodybuilder2/tests/fixtures/passing.pdb", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.versions != null }
+            )
+        }
+    }
+}

@@ -54,4 +54,15 @@ process ANTIFOLD_CDR{
         antifold: \$(python3 -c "from importlib.metadata import version; print(version('antifold'))")
     END_VERSIONS
     """
+
+    stub:
+    """
+    touch stub.fasta
+    touch stub.csv
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        antifold: stub
+    END_VERSIONS
+    """
 }
