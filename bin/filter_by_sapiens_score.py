@@ -56,19 +56,52 @@ def main():
     sequences = parse_fasta(args.humanized_fasta)
     scores = parse_scores(args.sapiens_scores_csv, args.score_col)
 
+    # Group into VH+VL pairs keyed by the candidate prefix (strip _VH / _VL suffix)
+    pairs = {}   # prefix -> {"VH": (name, seq), "VL": (name, seq)}
+    order = []   # preserve encounter order of prefixes
+    for name, seq in sequences:
+        if name.endswith("_VH"):
+            prefix = name[:-3]
+            chain = "VH"
+        elif name.endswith("_VL"):
+            prefix = name[:-3]
+            chain = "VL"
+        else:
+            # Unpaired sequence — skip with a warning
+            print(f"FILTER_BIOPHI: WARNING — skipping unpaired sequence '{name}'", file=sys.stderr)
+            continue
+        if prefix not in pairs:
+            pairs[prefix] = {}
+            order.append(prefix)
+        pairs[prefix][chain] = (name, seq)
+
+    total_pairs = len(order)
     retained = []
     filtered_names = []
-    for name, seq in sequences:
-        score = scores.get(name)
-        if score is not None and score >= args.min_score:
-            retained.append((name, seq))
+    for prefix in order:
+        pair = pairs[prefix]
+        vh = pair.get("VH")
+        vl = pair.get("VL")
+        if vh is None or vl is None:
+            filtered_names.append(prefix)
+            print(
+                f"FILTER_BIOPHI: WARNING — incomplete pair for '{prefix}' "
+                f"(missing {'VH' if vh is None else 'VL'}), skipping",
+                file=sys.stderr,
+            )
+            continue
+        vh_score = scores.get(vh[0])
+        vl_score = scores.get(vl[0])
+        if vh_score is not None and vl_score is not None and vh_score >= args.min_score and vl_score >= args.min_score:
+            retained.append(vh)
+            retained.append(vl)
         else:
-            filtered_names.append(name)
+            filtered_names.append(prefix)
 
-    total = len(sequences)
+    retained_pairs = len(retained) // 2
     print(
-        f"FILTER_BIOPHI: retained {len(retained)}/{total} candidates "
-        f"(sapiens_score >= {args.min_score})",
+        f"FILTER_BIOPHI: retained {retained_pairs}/{total_pairs} pairs "
+        f"(both chains sapiens_score >= {args.min_score})",
         file=sys.stderr,
     )
     if filtered_names:

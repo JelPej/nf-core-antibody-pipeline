@@ -1,0 +1,13 @@
+ANTIFOLD_CDR:
+  antifold: 0.3.1
+ANTIFOLD_SPLIT:
+  python: 3.10.20
+BIOPHI_SAPIENS:
+  biophi: null
+FILTER_ANTIFOLD:
+  python: 3.11.15
+FILTER_BIOPHI:
+  python: 3.11.15
+Workflow:
+    nf-core/antibodyoptimization: v1.0.0dev
+    Nextflow: 25.10.4

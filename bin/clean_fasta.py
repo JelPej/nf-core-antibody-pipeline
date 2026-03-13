@@ -48,6 +48,12 @@ def clean_fasta(input_path, prefix):
             "(try lowering --sapiens_min_score)."
         )
 
+    if len(h_seqs) == 0:
+        raise ValueError(
+            "No VH+VL pairs found in input FASTA. "
+            "All candidates were filtered out — try lowering --sapiens_min_score."
+        )
+
     for i, (h_seq, l_seq) in enumerate(zip(h_seqs, l_seqs), start=1):
         out_path = f"{prefix}_candidate_{i:04d}.fasta"
         with open(out_path, "w") as out:
