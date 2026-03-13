@@ -14,6 +14,9 @@ include { BIOPHI_SAPIENS         } from '../modules/local/biophi/main'
 include { FILTER_BIOPHI          } from '../modules/local/filter_biophi/main'
 include { BIOPHI_SPLIT           } from '../modules/local/biophi_split/main'
 include { ABODYBUILDER2          } from '../modules/local/abodybuilder2/main'
+include { FILTER_ABODYBUILDER2   } from '../modules/local/filter_abodybuilder2/main'
+include { OASIS                  } from '../modules/local/oasis/main'
+include { RANK_OASIS             } from '../modules/local/rank_oasis/main'
 
 
 /*
@@ -77,6 +80,29 @@ workflow ANTIBODYOPTIMIZATION {
 
     ABODYBUILDER2(ch_candidate_fastas)
     ch_versions = ch_versions.mix(ABODYBUILDER2.out.versions)
+
+    //
+    // STEP 7: Filter candidates by CDR B-factor error
+    //
+    ch_filter_input = ch_candidate_fastas
+        .join(ABODYBUILDER2.out.pdb, by: 0)
+
+    FILTER_ABODYBUILDER2(ch_filter_input)
+    ch_versions = ch_versions.mix(FILTER_ABODYBUILDER2.out.versions)
+
+    //
+    // STEP 8: OASis humanness scoring on structurally-validated candidates
+    //
+    ch_oasis_db = file(params.oasis_db)
+
+    OASIS(FILTER_ABODYBUILDER2.out.filtered, ch_oasis_db)
+    ch_versions = ch_versions.mix(OASIS.out.versions)
+
+    //
+    // STEP 9: Rank candidates by OASis percentile
+    //
+    RANK_OASIS(OASIS.out.scores)
+    ch_versions = ch_versions.mix(RANK_OASIS.out.versions)
 
     //
     // Collate and save software versions

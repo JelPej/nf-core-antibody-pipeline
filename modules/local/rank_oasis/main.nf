@@ -2,7 +2,7 @@ process RANK_OASIS {
     tag "$meta.id"
     label 'process_low'
 
-    container 'quay.io/biophi-openpyxl:1.0.0'
+    container 'docker.io/howlinman/biophi-oasis:1.0.0'
 
     input:
     tuple val(meta), path(oasis_scores_xlsx)

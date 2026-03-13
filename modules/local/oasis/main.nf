@@ -2,7 +2,7 @@ process OASIS {
     tag "$meta.id"
     label 'process_low'
 
-    container 'howlinman/biophi-oasis:1.0.0'
+    container 'docker.io/howlinman/biophi-oasis:1.0.0'
 
     input:
     tuple val(meta), path(humanized_fasta)
@@ -27,7 +27,7 @@ process OASIS {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        biophi: \$( biophi --version 2>&1 | head -1 )
+        biophi: \$(biophi --version 2>&1 | grep -oP '(?<=BioPhi )\\S+')
     END_VERSIONS
     """
 
@@ -38,7 +38,7 @@ process OASIS {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        biophi: \$( biophi --version 2>&1 | head -1 )
+        biophi: stub
     END_VERSIONS
     """
 }

@@ -69,19 +69,19 @@ for cdr in cdr_ranges:
     if error > threshold:
         has_exceeded_threshold = True
         break
-    
-    if has_exceeded_threshold:
-        with open(success_path, 'w') as f:
-            f.write(f"File {file_path} not accepted. Prediction errors for atoms are too high.\n")
-            f.write("Thresholds:")
-            f.write(f"{'H1':<6}{'H2':<6}{'H3':<6}")
-            f.write(f"{thresholds['H1']:<6.2f}{thresholds['H2']:<6.2f}{thresholds['H3']:<6.2f}\n")
-            f.write(f"{'L1':<6}{'L2':<6}{'L3':<6}")
-            f.write(f"{thresholds['L1']:<6.2f}{thresholds['L2']:<6.2f}{thresholds['L3']:<6.2f}")
-            f.write("\nErrors:")
-            f.write(f"{'H1':<6}{'H2':<6}{'H3':<6}")
-            f.write(f"{mean_errors['H1']:<6.2f}{mean_errors['H2']:<6.2f}{mean_errors['H3']:<6.2f}\n")
-            f.write(f"{'L1':<6}{'L2':<6}{'L3':<6}")
-            f.write(f"{mean_errors['L1']:<6.2f}{mean_errors['L2']:<6.2f}{mean_errors['L3']:<6.2f}")
-    else:
-        shutil.copy(fasta_path, success_path)
+
+if has_exceeded_threshold:
+    with open(failure_path, 'w') as f:
+        f.write(f"File {file_path} not accepted. Prediction errors for atoms are too high.\n")
+        f.write("Thresholds:")
+        f.write(f"{'H1':<6}{'H2':<6}{'H3':<6}")
+        f.write(f"{thresholds['H1']:<6.2f}{thresholds['H2']:<6.2f}{thresholds['H3']:<6.2f}\n")
+        f.write(f"{'L1':<6}{'L2':<6}{'L3':<6}")
+        f.write(f"{thresholds['L1']:<6.2f}{thresholds['L2']:<6.2f}{thresholds['L3']:<6.2f}")
+        f.write("\nErrors:")
+        f.write(f"{'H1':<6}{'H2':<6}{'H3':<6}")
+        f.write(f"{mean_errors['H1']:<6.2f}{mean_errors['H2']:<6.2f}{mean_errors['H3']:<6.2f}\n")
+        f.write(f"{'L1':<6}{'L2':<6}{'L3':<6}")
+        f.write(f"{mean_errors['L1']:<6.2f}{mean_errors['L2']:<6.2f}{mean_errors['L3']:<6.2f}")
+else:
+    shutil.copy(fasta_path, success_path)
