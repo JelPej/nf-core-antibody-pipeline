@@ -44,12 +44,10 @@ workflow NFCORE_ANTIBODYOPTIMIZATION {
 
     main:
 
-    ch_samplesheet = channel.value(file(params.input, checkIfExists: true))
     //
     // WORKFLOW: Run pipeline
     //
     ANTIBODYOPTIMIZATION (
-        ch_samplesheet
     )
     emit:
     multiqc_report = ANTIBODYOPTIMIZATION.out.multiqc_report // channel: /path/to/multiqc_report.html

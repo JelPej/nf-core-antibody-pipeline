@@ -22,20 +22,19 @@ include { ANTIFOLD_CDR  } from '../modules/nf-core/antifold_cdr'
 
 workflow ANTIBODYOPTIMIZATION {
 
-    take:
-    ch_samplesheet // channel: samplesheet read in from --input
-    
+
     main:
 
     ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
 
     channel
-        .fromList(samplesheetToList(ch_samplesheet, "${projectDir}/assets/schema_input.json"))
+        .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
         .map { meta, pdb ->
 
             return [ meta,pdb  ]
         }
+        .view()
         .set { ch_pdbs }
 
 
