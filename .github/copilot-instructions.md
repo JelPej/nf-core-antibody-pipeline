@@ -71,7 +71,7 @@ results/
 
 ### Current Workflow (wired as of this branch)
 
-`ANTIFOLD_CDR → ANTIFOLD_SPLIT → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT → FILTER_ANTIFOLD → ABODYBUILDER2 → FILTER_ABODYBUILDER2 → OASIS → RANK_OASIS`
+`ANTIFOLD_CDR → ANTIFOLD_SPLIT → FILTER_ANTIFOLD → BIOPHI_SAPIENS → FILTER_BIOPHI → BIOPHI_SPLIT → ABODYBUILDER2 → FILTER_ABODYBUILDER2 → OASIS → RANK_OASIS`
 
 ### Channel Contract
 
@@ -313,20 +313,15 @@ Examples:
 | #5 | Write nf-core module for ABodyBuilder2 | ✅ Done (`modules/local/abodybuilder2/`) — wired |
 | #6 | Write custom Dockerfile for BioPhi Sapiens + OASis | ✅ Done (`community.wave.seqera.io` / `howlinman/biophi-oasis` containers) |
 | #7 | Write nf-core module for BioPhi Sapiens humanization | ✅ Done (`modules/local/biophi/`) |
-| #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — not yet wired |
-| #9 | Wire all modules into end-to-end pipeline | 🔄 In progress — wired through `FILTER_ANTIFOLD` → `BIOPHI_SPLIT`; remaining: `ABODYBUILDER2` (blocked on per-candidate splitting), `FILTER_ABODYBUILDER2`, `OASIS`, `RANK_OASIS` |
-| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress — tested through `BIOPHI_SPLIT`; blocked on items above |
+| #8 | Write nf-core module for OASis humanness scoring | ✅ Done (`modules/local/oasis/`) — wired |
+| #9 | Wire all modules into end-to-end pipeline | ✅ Done — fully wired end-to-end |
+| #10 | End-to-end test run with 6y1l test PDB | 🔄 In progress |
 
-### What still needs to be built
+### What still needs to be done
 
-| Item | Issue | Blocked by |
-|---|---|---|
-| Per-candidate FASTA splitting (between `BIOPHI_SPLIT` and `ABODYBUILDER2`) | bin script + wiring | non-unique IDs from `antifold_split.py` |
-| Wire `ABODYBUILDER2` | wiring | per-candidate splitting |
-| `FILTER_ABODYBUILDER2` | new module + bin script + wiring | — |
-| Wire `OASIS` | wiring | `ABODYBUILDER2` |
-| `RANK_OASIS` | new module + bin script + wiring | — |
-| Full end-to-end test | testing | all of the above |
+| Item | Issue |
+|---|---|
+| Full end-to-end test run with 6y1l | #10 |
 
 ### Notes
 - BioPhi and OASis share one container image.
