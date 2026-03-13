@@ -1,0 +1,8 @@
+Mar-11 14:53:38.514 [main] INFO  com.askimed.nf.test.App - nf-test 0.9.4
+Mar-11 14:53:38.530 [main] INFO  com.askimed.nf.test.App - Arguments: [test]
+Mar-11 14:53:39.686 [main] INFO  com.askimed.nf.test.App - Nextflow Version: 25.10.4
+Mar-11 14:53:39.692 [main] WARN  com.askimed.nf.test.commands.RunTestsCommand - No nf-test config file found.
+Mar-11 14:53:39.708 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Loaded 1 files from directory /home/hristijan/nf-core-antibody-pipeline/modules/nf-core/antifold_cdr/tests in 0.014 sec
+Mar-11 14:53:39.710 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Found 0 files containing tests.
+Mar-11 14:53:39.711 [main] DEBUG com.askimed.nf.test.lang.dependencies.DependencyResolver - Found files: []
+Mar-11 14:53:39.713 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Found 0 tests to execute.
